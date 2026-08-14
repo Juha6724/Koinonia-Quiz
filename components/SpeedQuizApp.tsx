@@ -92,15 +92,17 @@ export default function SpeedQuizApp() {
   }, []);
 
   useEffect(() => {
-    void loadRankings();
+    const timeout = window.setTimeout(() => {
+      void loadRankings();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
   }, [loadRankings]);
 
   useEffect(() => {
     if (phase !== "ranking") {
       return;
     }
-
-    setAutoReturnLeft(AUTO_RETURN_SECONDS);
 
     const interval = window.setInterval(() => {
       setAutoReturnLeft((seconds) => Math.max(0, seconds - 1));
@@ -115,6 +117,13 @@ export default function SpeedQuizApp() {
       window.clearTimeout(timeout);
     };
   }, [phase]);
+
+  function showRankingAfterDelay() {
+    window.setTimeout(() => {
+      setAutoReturnLeft(AUTO_RETURN_SECONDS);
+      setPhase("ranking");
+    }, 650);
+  }
 
   function resetToIntro() {
     setPhase("intro");
@@ -209,14 +218,14 @@ export default function SpeedQuizApp() {
     if (!isCorrect) {
       setResultState("wrong");
       await loadRankings();
-      window.setTimeout(() => setPhase("ranking"), 650);
+      showRankingAfterDelay();
       return;
     }
 
     setResultState("correct");
     await saveRanking(answerElapsedMs, question.id);
     setIsSaving(false);
-    window.setTimeout(() => setPhase("ranking"), 650);
+    showRankingAfterDelay();
   }
 
   async function handleResetRankings() {
