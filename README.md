@@ -63,6 +63,8 @@ https://your-domain.vercel.app/admin
 
 Supabase의 `quizzes` 테이블에 활성 퀴즈가 있으면 메인 게임은 그 퀴즈를 우선 사용합니다. 퀴즈가 없거나 Supabase가 연결되지 않으면 코드에 포함된 기본 퀴즈로 동작합니다.
 
+관리자 페이지에 처음 들어갔을 때 Supabase의 `quizzes` 테이블이 비어 있으면 교회용 기본 템플릿 퀴즈가 자동으로 생성됩니다. 다른 교회에서 사용할 때도 이 기본 퀴즈의 선택지만 바꾸거나 새 퀴즈를 추가하면 됩니다.
+
 ## Vercel 배포
 
 1. GitHub 저장소를 Vercel에 Import합니다.

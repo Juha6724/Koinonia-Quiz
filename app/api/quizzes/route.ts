@@ -103,6 +103,24 @@ function toQuizInsert(payload: QuizPayload) {
   };
 }
 
+function toQuizInsertFromDefault(question: (typeof quizQuestions)[number]) {
+  return {
+    prompt: question.prompt,
+    visual: null,
+    choice_1: question.choices[0],
+    choice_2: question.choices[1],
+    choice_3: question.choices[2],
+    choice_4: question.choices[3],
+    choice_type: question.choiceType,
+    choice_image_1: question.choiceImages?.[0] || null,
+    choice_image_2: question.choiceImages?.[1] || null,
+    choice_image_3: question.choiceImages?.[2] || null,
+    choice_image_4: question.choiceImages?.[3] || null,
+    answer_index: question.answerIndex,
+    is_active: true
+  };
+}
+
 export async function GET(request: NextRequest) {
   const supabase = createSupabaseAdmin();
 
@@ -128,10 +146,24 @@ export async function GET(request: NextRequest) {
     query = query.eq("is_active", true);
   }
 
-  const { data, error } = await query;
+  let { data, error } = await query;
 
   if (error) {
     return jsonError(error.message, 500);
+  }
+
+  if (isAdmin && data.length === 0) {
+    const seeded = await supabase
+      .from("quizzes")
+      .insert(quizQuestions.map(toQuizInsertFromDefault))
+      .select(QUIZ_SELECT)
+      .order("created_at", { ascending: false });
+
+    if (seeded.error) {
+      return jsonError(seeded.error.message, 500);
+    }
+
+    data = seeded.data;
   }
 
   return NextResponse.json({
