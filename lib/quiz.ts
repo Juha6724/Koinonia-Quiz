@@ -4,6 +4,21 @@ export type QuizQuestion = {
   visual: string;
   choices: string[];
   answerIndex: number;
+  isActive?: boolean;
+};
+
+export type QuizRow = {
+  id: string;
+  prompt: string;
+  visual: string;
+  choice_1: string;
+  choice_2: string;
+  choice_3: string;
+  choice_4: string;
+  answer_index: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export const practiceQuestion: QuizQuestion = {
@@ -59,7 +74,19 @@ export const quizQuestions: QuizQuestion[] = [
   }
 ];
 
-export function getRandomQuizQuestion() {
-  const randomIndex = Math.floor(Math.random() * quizQuestions.length);
-  return quizQuestions[randomIndex];
+export function getRandomQuizQuestion(questions = quizQuestions) {
+  const source = questions.length > 0 ? questions : quizQuestions;
+  const randomIndex = Math.floor(Math.random() * source.length);
+  return source[randomIndex];
+}
+
+export function toQuizQuestion(row: QuizRow): QuizQuestion {
+  return {
+    id: row.id,
+    prompt: row.prompt,
+    visual: row.visual,
+    choices: [row.choice_1, row.choice_2, row.choice_3, row.choice_4],
+    answerIndex: row.answer_index,
+    isActive: row.is_active
+  };
 }

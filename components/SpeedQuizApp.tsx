@@ -3,7 +3,12 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatElapsed, getKstDayKey } from "@/lib/day";
-import { getRandomQuizQuestion, practiceQuestion, QuizQuestion } from "@/lib/quiz";
+import {
+  getRandomQuizQuestion,
+  practiceQuestion,
+  QuizQuestion,
+  quizQuestions
+} from "@/lib/quiz";
 import { Ranking, sortRankings } from "@/lib/rankings";
 
 type Phase = "intro" | "ready" | "quiz" | "practiceDone" | "ranking";
@@ -52,6 +57,7 @@ export default function SpeedQuizApp() {
   const [startedAt, setStartedAt] = useState(0);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const [rankings, setRankings] = useState<Ranking[]>([]);
+  const [quizPool, setQuizPool] = useState<QuizQuestion[]>(quizQuestions);
   const [storageMode, setStorageMode] = useState<StorageMode>("checking");
   const [resultState, setResultState] = useState<ResultState>("idle");
   const [lastRankingId, setLastRankingId] = useState<string | null>(null);
@@ -91,13 +97,30 @@ export default function SpeedQuizApp() {
     return localRankings;
   }, []);
 
+  const loadQuizQuestions = useCallback(async () => {
+    try {
+      const response = await fetch("/api/quizzes", { cache: "no-store" });
+      const data = await response.json();
+
+      if (response.ok && Array.isArray(data.quizzes) && data.quizzes.length > 0) {
+        setQuizPool(data.quizzes as QuizQuestion[]);
+        return;
+      }
+    } catch {
+      // Keep the built-in quiz set when Supabase quizzes are unavailable.
+    }
+
+    setQuizPool(quizQuestions);
+  }, []);
+
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       void loadRankings();
+      void loadQuizQuestions();
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, [loadRankings]);
+  }, [loadQuizQuestions, loadRankings]);
 
   useEffect(() => {
     if (phase !== "ranking") {
@@ -148,7 +171,7 @@ export default function SpeedQuizApp() {
   }
 
   function startRound(practice: boolean) {
-    setQuestion(practice ? practiceQuestion : getRandomQuizQuestion());
+    setQuestion(practice ? practiceQuestion : getRandomQuizQuestion(quizPool));
     setIsPracticeRound(practice);
     setSelectedIndex(null);
     setElapsedMs(null);
