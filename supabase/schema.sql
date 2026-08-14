@@ -19,11 +19,16 @@ alter table public.rankings enable row level security;
 create table if not exists public.quizzes (
   id uuid primary key default gen_random_uuid(),
   prompt text not null check (char_length(prompt) between 2 and 180),
-  visual text not null check (char_length(visual) between 1 and 60),
+  visual text check (visual is null or char_length(visual) between 1 and 60),
   choice_1 text not null check (char_length(choice_1) between 1 and 80),
   choice_2 text not null check (char_length(choice_2) between 1 and 80),
   choice_3 text not null check (char_length(choice_3) between 1 and 80),
   choice_4 text not null check (char_length(choice_4) between 1 and 80),
+  choice_type text not null default 'text' check (choice_type in ('text', 'image')),
+  choice_image_1 text,
+  choice_image_2 text,
+  choice_image_3 text,
+  choice_image_4 text,
   answer_index smallint not null check (answer_index between 0 and 3),
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -48,3 +53,28 @@ create trigger set_quizzes_updated_at
   execute function public.set_updated_at();
 
 alter table public.quizzes enable row level security;
+
+alter table public.quizzes
+  alter column visual drop not null;
+
+alter table public.quizzes
+  add column if not exists choice_type text not null default 'text',
+  add column if not exists choice_image_1 text,
+  add column if not exists choice_image_2 text,
+  add column if not exists choice_image_3 text,
+  add column if not exists choice_image_4 text;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'quizzes_choice_type_check'
+      and conrelid = 'public.quizzes'::regclass
+  ) then
+    alter table public.quizzes
+      add constraint quizzes_choice_type_check
+      check (choice_type in ('text', 'image'));
+  end if;
+end;
+$$;

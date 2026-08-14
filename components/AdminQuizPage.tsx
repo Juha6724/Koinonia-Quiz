@@ -1,15 +1,17 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
-import { QuizQuestion } from "@/lib/quiz";
+import { QuizChoiceType, QuizQuestion } from "@/lib/quiz";
 
 type QuizFormState = {
   id: string | null;
   prompt: string;
-  visual: string;
   choices: string[];
+  choiceType: QuizChoiceType;
+  choiceImages: string[];
   answerIndex: number;
   isActive: boolean;
 };
@@ -17,11 +19,46 @@ type QuizFormState = {
 const emptyForm: QuizFormState = {
   id: null,
   prompt: "",
-  visual: "",
   choices: ["", "", "", ""],
+  choiceType: "text",
+  choiceImages: ["", "", "", ""],
   answerIndex: 0,
   isActive: true
 };
+
+function readFileAsImage(file: File) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = String(reader.result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function compressImageFile(file: File) {
+  const image = await readFileAsImage(file);
+  const maxSize = 900;
+  const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("이미지를 처리할 수 없습니다.");
+  }
+
+  canvas.width = width;
+  canvas.height = height;
+  context.drawImage(image, 0, 0, width, height);
+
+  return canvas.toDataURL("image/jpeg", 0.78);
+}
 
 export default function AdminQuizPage() {
   const [pinInput, setPinInput] = useState("");
@@ -97,12 +134,45 @@ export default function AdminQuizPage() {
     }));
   }
 
+  async function updateChoiceImage(index: number, file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    setMessage("사진을 압축하고 있습니다.");
+
+    try {
+      const imageDataUrl = await compressImageFile(file);
+      setForm((current) => ({
+        ...current,
+        choiceImages: current.choiceImages.map((image, imageIndex) =>
+          imageIndex === index ? imageDataUrl : image
+        )
+      }));
+      setMessage("사진을 불러왔습니다.");
+    } catch {
+      setMessage("사진을 불러오지 못했습니다. 다른 이미지를 선택해 주세요.");
+    }
+  }
+
+  function updateChoiceType(choiceType: QuizChoiceType) {
+    setForm((current) => ({
+      ...current,
+      choiceType,
+      choices:
+        choiceType === "image"
+          ? current.choices.map((choice, index) => choice || `사진 선택지 ${index + 1}`)
+          : current.choices
+    }));
+  }
+
   function editQuiz(quiz: QuizQuestion) {
     setForm({
       id: quiz.id,
       prompt: quiz.prompt,
-      visual: quiz.visual,
       choices: [...quiz.choices],
+      choiceType: quiz.choiceType,
+      choiceImages: quiz.choiceImages ?? ["", "", "", ""],
       answerIndex: quiz.answerIndex,
       isActive: quiz.isActive ?? true
     });
@@ -131,8 +201,9 @@ export default function AdminQuizPage() {
         body: JSON.stringify({
           id: form.id,
           prompt: form.prompt,
-          visual: form.visual,
           choices: form.choices,
+          choiceType: form.choiceType,
+          choiceImages: form.choiceImages,
           answerIndex: form.answerIndex,
           isActive: form.isActive,
           pin: adminPin
@@ -235,32 +306,78 @@ export default function AdminQuizPage() {
                 <textarea
                   value={form.prompt}
                   onChange={(event) => setForm({ ...form, prompt: event.target.value })}
-                  placeholder="예: 노아가 하나님의 말씀을 따라 만든 것은?"
+                  placeholder="예: 우리교회 목사님 성함은?"
                   required
                 />
               </label>
 
-              <label>
-                화면 중앙에 크게 보일 단어/숫자
-                <input
-                  value={form.visual}
-                  onChange={(event) => setForm({ ...form, visual: event.target.value })}
-                  placeholder="예: 방주"
-                  required
-                />
-              </label>
+              <fieldset className="choice-type-fieldset">
+                <legend>선택지 형태</legend>
+                <div className="choice-type-options">
+                  <label>
+                    <input
+                      type="radio"
+                      name="choiceType"
+                      checked={form.choiceType === "text"}
+                      onChange={() => updateChoiceType("text")}
+                    />
+                    글자 선택지
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="choiceType"
+                      checked={form.choiceType === "image"}
+                      onChange={() => updateChoiceType("image")}
+                    />
+                    사진 선택지
+                  </label>
+                </div>
+              </fieldset>
 
               <fieldset>
-                <legend>선택지 4개</legend>
+                <legend>{form.choiceType === "image" ? "사진 선택지 4개" : "글자 선택지 4개"}</legend>
                 {form.choices.map((choice, index) => (
                   <label key={index}>
                     선택지 {index + 1}
-                    <div className="choice-editor-row">
-                      <input
-                        value={choice}
-                        onChange={(event) => updateChoice(index, event.target.value)}
-                        required
-                      />
+                    <div
+                      className={
+                        form.choiceType === "image"
+                          ? "choice-editor-row image-choice-editor-row"
+                          : "choice-editor-row"
+                      }
+                    >
+                      {form.choiceType === "text" ? (
+                        <input
+                          value={choice}
+                          onChange={(event) => updateChoice(index, event.target.value)}
+                          placeholder={`선택지 ${index + 1}`}
+                          required
+                        />
+                      ) : (
+                        <div className="image-choice-fields">
+                          <input
+                            value={choice}
+                            onChange={(event) => updateChoice(index, event.target.value)}
+                            placeholder={`사진 설명 ${index + 1}`}
+                          />
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(event) =>
+                              void updateChoiceImage(index, event.target.files?.[0])
+                            }
+                            required={!form.choiceImages[index]}
+                          />
+                          {form.choiceImages[index] && (
+                            <img
+                              src={form.choiceImages[index]}
+                              alt={`${choice || `선택지 ${index + 1}`} 미리보기`}
+                              className="admin-choice-preview"
+                            />
+                          )}
+                        </div>
+                      )}
                       <button
                         type="button"
                         className={form.answerIndex === index ? "answer-selected" : ""}
@@ -305,12 +422,25 @@ export default function AdminQuizPage() {
                         <span className={quiz.isActive ? "active-label" : "inactive-label"}>
                           {quiz.isActive ? "사용 중" : "숨김"}
                         </span>
-                        <strong>{quiz.visual}</strong>
+                        <strong>{quiz.choiceType === "image" ? "사진 선택지 퀴즈" : "글자 선택지 퀴즈"}</strong>
                         <p>{quiz.prompt}</p>
                         <small>
                           정답: {quiz.choices[quiz.answerIndex]} / 선택지{" "}
                           {quiz.choices.join(", ")}
                         </small>
+                        {quiz.choiceType === "image" && (
+                          <div className="admin-list-images">
+                            {(quiz.choiceImages ?? []).map((image, index) =>
+                              image ? (
+                                <img
+                                  key={index}
+                                  src={image}
+                                  alt={quiz.choices[index] || `선택지 ${index + 1}`}
+                                />
+                              ) : null
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="quiz-list-actions">
                         <button type="button" onClick={() => editQuiz(quiz)}>

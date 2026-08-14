@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -364,8 +365,8 @@ export default function SpeedQuizApp() {
               <strong>{elapsedMs === null ? "측정 중..." : formatElapsed(elapsedMs)}</strong>
             </div>
 
-            <div className="question-card">
-              <div className="visual-card">{question.visual}</div>
+            <div className={`question-card ${question.visual ? "" : "question-card-text-only"}`}>
+              {question.visual && <div className="visual-card">{question.visual}</div>}
               <h2>{question.prompt}</h2>
             </div>
 
@@ -384,13 +385,24 @@ export default function SpeedQuizApp() {
 
                 return (
                   <button
-                    key={choice}
-                    className={`choice-button ${revealClass}`}
+                    key={`${choice}-${index}`}
+                    className={`choice-button ${
+                      question.choiceType === "image" ? "choice-button-image" : ""
+                    } ${revealClass}`}
                     disabled={selectedIndex !== null}
                     onClick={() => void handleChoice(index)}
                   >
                     <span>{index + 1}</span>
-                    {choice}
+                    {question.choiceType === "image" && question.choiceImages?.[index] ? (
+                      <img
+                        src={question.choiceImages[index]}
+                        alt={choice || `선택지 ${index + 1}`}
+                        className="choice-photo"
+                        draggable={false}
+                      />
+                    ) : (
+                      choice
+                    )}
                   </button>
                 );
               })}

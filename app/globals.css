@@ -332,6 +332,15 @@ p {
   border-radius: 34px;
 }
 
+.question-card-text-only {
+  grid-template-columns: 1fr;
+  min-height: 220px;
+}
+
+.question-card-text-only h2 {
+  text-align: center;
+}
+
 .visual-card {
   display: grid;
   min-height: 210px;
@@ -395,6 +404,29 @@ p {
   background: var(--primary);
   border-radius: 18px;
   font-size: 24px;
+}
+
+.choice-button-image {
+  position: relative;
+  align-items: stretch;
+  min-height: 210px;
+  padding: 14px;
+}
+
+.choice-button-image span {
+  position: absolute;
+  z-index: 1;
+  width: 46px;
+  height: 46px;
+  margin: 10px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+}
+
+.choice-photo {
+  width: 100%;
+  min-height: 180px;
+  object-fit: cover;
+  border-radius: 20px;
 }
 
 .choice-correct {
@@ -755,6 +787,30 @@ p {
   align-items: end;
 }
 
+.image-choice-editor-row {
+  grid-template-columns: minmax(0, 1fr) 88px;
+  align-items: start;
+}
+
+.image-choice-fields {
+  display: grid;
+  gap: 10px;
+}
+
+.image-choice-fields input[type="file"] {
+  padding: 12px;
+  background: #ffffff;
+  border: 1px dashed rgba(99, 102, 241, 0.45);
+}
+
+.admin-choice-preview {
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+}
+
 .choice-editor-row button.answer-selected {
   color: #ffffff;
   background: var(--success);
@@ -806,6 +862,20 @@ p {
 .admin-quiz-list small {
   color: var(--muted);
   line-height: 1.4;
+}
+
+.admin-list-images {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.admin-list-images img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
 }
 
 .active-label,
