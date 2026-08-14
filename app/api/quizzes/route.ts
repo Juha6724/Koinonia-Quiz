@@ -146,10 +146,11 @@ export async function GET(request: NextRequest) {
     query = query.eq("is_active", true);
   }
 
-  let { data, error } = await query;
+  const result = await query;
+  let data = result.data ?? [];
 
-  if (error) {
-    return jsonError(error.message, 500);
+  if (result.error) {
+    return jsonError(result.error.message, 500);
   }
 
   if (isAdmin && data.length === 0) {
