@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 
 import { QuizQuestion } from "@/lib/quiz";
@@ -197,9 +198,9 @@ export default function AdminQuizPage() {
             <h1>퀴즈 관리자</h1>
             <p>관리자 PIN으로 들어와서 실전 게임에 나올 퀴즈를 만들고 수정하세요.</p>
           </div>
-          <a href="/" className="admin-home-link">
+          <Link href="/" className="admin-home-link">
             메인 게임으로
-          </a>
+          </Link>
         </header>
 
         {!isUnlocked ? (
