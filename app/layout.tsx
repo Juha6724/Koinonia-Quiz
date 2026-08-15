@@ -1,6 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { Noto_Sans_KR } from "next/font/google";
 
 import "./globals.css";
+
+const notoSansKr = Noto_Sans_KR({
+  weight: ["400", "700", "800", "900"],
+  display: "swap",
+  preload: false,
+  adjustFontFallback: false,
+  variable: "--font-noto-sans-kr",
+  fallback: ["Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", "sans-serif"]
+});
 
 export const metadata: Metadata = {
   title: "코이노니아 스피드퀴즈",
@@ -20,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={notoSansKr.variable}>
       <body>{children}</body>
     </html>
   );
