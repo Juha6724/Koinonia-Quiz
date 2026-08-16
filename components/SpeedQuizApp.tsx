@@ -218,7 +218,6 @@ export default function SpeedQuizApp() {
     setLastRankingId(localRanking.id);
     setRankings(nextRankings);
     setIsSaving(false);
-    return;
   }
 
   async function handleChoice(choiceIndex: number) {
@@ -294,164 +293,231 @@ export default function SpeedQuizApp() {
   return (
     <main className="app-shell">
       <div className="kiosk-card">
-        <header className="app-header">
-          <div>
-            <p className="eyebrow">Koinonia Speed Quiz</p>
-            <h1>빛의 속도로 정답을 클릭하세요!</h1>
-          </div>
-        </header>
-
-        {phase === "intro" && (
-          <section className="screen intro-screen">
-            <div className="hero-copy">
-              <span className="spark-badge">순발력 챌린지</span>
-              <h2>퀴즈가 나오자마자 빛의 속도로 정답을 클릭하세요!</h2>
-              <p>
-                가장 빨리 퀴즈를 맞춘 사람에게 선물을 드립니다. 이름을 입력하고
-                연습 문제로 손을 풀어 보세요.
-              </p>
-            </div>
-
-            <form className="name-form" onSubmit={handleNameSubmit}>
-              <label htmlFor="playerName">이름</label>
-              <input
-                id="playerName"
-                maxLength={20}
-                value={playerName}
-                onChange={(event) => setPlayerName(event.target.value)}
-                placeholder="예: 민준"
-                autoComplete="off"
-                autoFocus
-              />
-              <button type="submit" disabled={!cleanName}>
-                다음으로
-              </button>
-            </form>
-
-            {topRanking && (
-              <div className="today-best">
-                <span>오늘 1등</span>
-                <strong>
-                  {topRanking.playerName} · {formatElapsed(topRanking.elapsedMs)}
-                </strong>
-              </div>
-            )}
-          </section>
-        )}
-
-        {phase === "ready" && (
-          <section className="screen ready-screen">
-            <span className="spark-badge">첫 라운드는 연습!</span>
-            <h2>{cleanName}님, 손가락을 준비하세요.</h2>
-            <p>Start를 누르는 순간 문제가 나타나고 시간이 바로 측정됩니다.</p>
-            <button className="start-button" onClick={() => startRound(true)}>
-              Start
-            </button>
-          </section>
+        {phase !== "quiz" && (
+          <header className="top-bar">
+            <p className="top-bar-title">코이노니아 스피드퀴즈</p>
+          </header>
         )}
 
         {phase === "quiz" && (
-          <section className="screen quiz-screen">
-            <div className="quiz-topline">
-              <span>{isPracticeRound ? "연습 게임" : "실전 게임"}</span>
-              <strong>{elapsedMs === null ? "측정 중..." : formatElapsed(elapsedMs)}</strong>
-            </div>
+          <header className="quiz-bar">
+            <span className="quiz-bar-label">{isPracticeRound ? "연습 게임" : "실전 게임"}</span>
+            <span className="quiz-bar-timer">
+              {elapsedMs === null ? "측정 중" : formatElapsed(elapsedMs)}
+            </span>
+          </header>
+        )}
 
-            <div className={`question-card ${question.visual ? "" : "question-card-text-only"}`}>
-              {question.visual && <div className="visual-card">{question.visual}</div>}
-              <h2>{question.prompt}</h2>
-            </div>
-
-            <div className="choice-grid">
-              {question.choices.map((choice, index) => {
-                const isSelected = selectedIndex === index;
-                const isAnswer = question.answerIndex === index;
-                const revealClass =
-                  selectedIndex === null
-                    ? ""
-                    : isAnswer
-                      ? "choice-correct"
-                      : isSelected
-                        ? "choice-wrong"
-                        : "choice-muted";
-
-                return (
-                  <button
-                    key={`${choice}-${index}`}
-                    className={`choice-button ${
-                      question.choiceType === "image" ? "choice-button-image" : ""
-                    } ${revealClass}`}
-                    disabled={selectedIndex !== null}
-                    onClick={() => void handleChoice(index)}
-                  >
-                    <span>{index + 1}</span>
-                    {question.choiceType === "image" && question.choiceImages?.[index] ? (
-                      <img
-                        src={question.choiceImages[index]}
-                        alt={choice || `선택지 ${index + 1}`}
-                        className="choice-photo"
-                        draggable={false}
-                      />
-                    ) : (
-                      choice
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {selectedIndex !== null && (
-              <div className={`answer-toast answer-toast-${resultState}`}>
-                {resultState === "practice" && "좋아요! 방금은 연습게임이었어요."}
-                {resultState === "correct" && (isSaving ? "랭킹 등록 중..." : "정답! 랭킹에 등록합니다.")}
-                {resultState === "wrong" && "땡! 아쉽지만 이번 기록은 등록되지 않아요."}
+        <div className={`screen-body ${phase === "ranking" ? "screen-body-scroll" : ""}`}>
+          {phase === "intro" && (
+            <section className="flow-screen">
+              <div className="flow-head">
+                <span className="chip">순발력 챌린지</span>
+                <h1 className="display-title">
+                  퀴즈가 나오자마자
+                  <br />
+                  빛의 속도로 정답을
+                  <br />
+                  클릭하세요
+                </h1>
+                <p className="body-text">
+                  가장 빨리 맞춘 사람에게 선물을 드려요.
+                  <br />
+                  이름을 입력하고 연습 문제로 손을 풀어 보세요.
+                </p>
               </div>
-            )}
-          </section>
-        )}
 
-        {phase === "practiceDone" && (
-          <section className="screen ready-screen">
-            <span className="spark-badge">처음은 연습게임!</span>
-            <h2>이제 진짜 기록이 시작됩니다.</h2>
-            <p>다음 문제에서 정답을 맞히면 오늘의 랭킹에 바로 올라갑니다.</p>
-            <button className="start-button" onClick={() => startRound(false)}>
-              Real Start
-            </button>
-          </section>
-        )}
+              <form className="name-form" id="name-form" onSubmit={handleNameSubmit}>
+                <div className="field-group">
+                  <label className="field-label" htmlFor="playerName">
+                    이름
+                  </label>
+                  <input
+                    id="playerName"
+                    className="text-field text-field-lg"
+                    maxLength={20}
+                    value={playerName}
+                    onChange={(event) => setPlayerName(event.target.value)}
+                    placeholder="예: 민준"
+                    autoComplete="off"
+                    autoFocus
+                  />
+                </div>
+              </form>
 
-        {phase === "ranking" && (
-          <section className="screen ranking-screen">
-            <div className="result-summary">
-              {resultState === "correct" ? (
-                <>
-                  <span className="spark-badge">정답 등록 완료</span>
-                  <h2>
-                    {cleanName}님 기록 {elapsedMs === null ? "" : formatElapsed(elapsedMs)}
-                  </h2>
-                  <p>{myRank ? `현재 ${myRank}위입니다!` : "랭킹을 불러오고 있습니다."}</p>
-                </>
-              ) : (
-                <>
-                  <span className="spark-badge fail-badge">땡!</span>
-                  <h2>이번 문제는 아쉽게 실패했어요.</h2>
-                  <p>랭킹에는 정답자 기록만 올라갑니다.</p>
-                </>
+              {topRanking && (
+                <div className="list-row list-row-highlight">
+                  <div className="list-row-main">
+                    <span className="list-row-label">오늘 1등</span>
+                    <strong className="list-row-title">{topRanking.playerName}</strong>
+                  </div>
+                  <span className="list-row-value">{formatElapsed(topRanking.elapsedMs)}</span>
+                </div>
               )}
-            </div>
+            </section>
+          )}
 
-            <RankingBoard rankings={rankings} lastRankingId={lastRankingId} />
+          {phase === "ready" && (
+            <section className="flow-screen flow-screen-center">
+              <div className="flow-head flow-head-center">
+                <span className="chip">첫 라운드는 연습</span>
+                <h1 className="display-title display-title-sm">
+                  {cleanName}님,
+                  <br />
+                  손가락을 준비하세요
+                </h1>
+                <p className="body-text">
+                  시작하기를 누르면
+                  <br />
+                  문제가 바로 나오고 시간이 측정돼요.
+                </p>
+              </div>
+            </section>
+          )}
 
-            <p className="auto-return">
-              {autoReturnLeft}초 뒤 처음 화면으로 돌아갑니다.
-              <button onClick={resetToIntro}>바로 처음으로</button>
-            </p>
-          </section>
+          {phase === "quiz" && (
+            <section className="quiz-screen">
+              <article
+                className={`question-card ${question.visual ? "" : "question-card-text-only"}`}
+              >
+                {question.visual && <div className="visual-card">{question.visual}</div>}
+                <h2 className="question-title">{question.prompt}</h2>
+              </article>
+
+              <div className="choice-grid">
+                {question.choices.map((choice, index) => {
+                  const isSelected = selectedIndex === index;
+                  const isAnswer = question.answerIndex === index;
+                  const revealClass =
+                    selectedIndex === null
+                      ? ""
+                      : isAnswer
+                        ? "choice-correct"
+                        : isSelected
+                          ? "choice-wrong"
+                          : "choice-muted";
+
+                  return (
+                    <button
+                      key={`${choice}-${index}`}
+                      className={`choice-button ${
+                        question.choiceType === "image" ? "choice-button-image" : ""
+                      } ${revealClass}`}
+                      disabled={selectedIndex !== null}
+                      onClick={() => void handleChoice(index)}
+                    >
+                      <span className="choice-index">{index + 1}</span>
+                      {question.choiceType === "image" && question.choiceImages?.[index] ? (
+                        <img
+                          src={question.choiceImages[index]}
+                          alt={choice || `선택지 ${index + 1}`}
+                          className="choice-photo"
+                          draggable={false}
+                        />
+                      ) : (
+                        <span className="choice-label">{choice}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedIndex !== null && (
+                <div className={`toast toast-${resultState}`}>
+                  {resultState === "practice" && "좋아요! 방금은 연습이었어요."}
+                  {resultState === "correct" &&
+                    (isSaving ? "랭킹 등록 중이에요." : "정답! 랭킹에 등록할게요.")}
+                  {resultState === "wrong" && "아쉽지만 이번 기록은 등록되지 않아요."}
+                </div>
+              )}
+            </section>
+          )}
+
+          {phase === "practiceDone" && (
+            <section className="flow-screen flow-screen-center">
+              <div className="flow-head flow-head-center">
+                <span className="chip">연습 완료</span>
+                <h1 className="display-title display-title-sm">
+                  이제 진짜 기록이
+                  <br />
+                  시작돼요
+                </h1>
+                <p className="body-text">
+                  다음 문제에서 정답을 맞히면
+                  <br />
+                  오늘의 랭킹에 바로 올라가요.
+                </p>
+              </div>
+            </section>
+          )}
+
+          {phase === "ranking" && (
+            <section className="ranking-screen">
+              <div className="result-card">
+                {resultState === "correct" ? (
+                  <>
+                    <span className="chip chip-success">정답 등록 완료</span>
+                    <h1 className="display-title display-title-sm">
+                      {cleanName}님 기록
+                      <br />
+                      <span className="tabular">{elapsedMs === null ? "" : formatElapsed(elapsedMs)}</span>
+                    </h1>
+                    <p className="body-text">
+                      {myRank ? `현재 ${myRank}위예요.` : "랭킹을 불러오고 있어요."}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <span className="chip chip-danger">오답</span>
+                    <h1 className="display-title display-title-sm">
+                      이번 문제는
+                      <br />
+                      아쉽게 실패했어요
+                    </h1>
+                    <p className="body-text">랭킹에는 정답자 기록만 올라가요.</p>
+                  </>
+                )}
+              </div>
+
+              <RankingBoard rankings={rankings} lastRankingId={lastRankingId} />
+
+              <p className="notice-bar">
+                <span>{autoReturnLeft}초 뒤 처음 화면으로 돌아가요.</span>
+                <button type="button" className="text-button" onClick={resetToIntro}>
+                  바로 처음으로
+                </button>
+              </p>
+            </section>
+          )}
+        </div>
+
+        {phase === "intro" && (
+          <div className="bottom-cta">
+            <button
+              type="submit"
+              form="name-form"
+              className="btn-primary btn-primary-xl"
+              disabled={!cleanName}
+            >
+              다음으로
+            </button>
+          </div>
+        )}
+
+        {(phase === "ready" || phase === "practiceDone") && (
+          <div className="bottom-cta">
+            <button
+              type="button"
+              className="btn-primary btn-primary-xl"
+              onClick={() => startRound(phase === "ready")}
+            >
+              {phase === "ready" ? "시작하기" : "실전 시작"}
+            </button>
+          </div>
         )}
 
         <footer className="app-footer">
-          <button className="reset-button" onClick={() => void handleResetRankings()}>
+          <button type="button" className="text-button text-button-muted" onClick={() => void handleResetRankings()}>
             관리자 랭킹 리셋
           </button>
         </footer>
@@ -468,28 +534,32 @@ function RankingBoard({
   lastRankingId: string | null;
 }) {
   return (
-    <div className="ranking-board">
-      <div className="ranking-title">
-        <h3>오늘의 랭킹</h3>
-        <span>빠른 순서</span>
+    <section className="ranking-panel">
+      <div className="list-header">
+        <h2 className="section-title">오늘의 랭킹</h2>
+        <span className="section-caption">빠른 순</span>
       </div>
 
       {rankings.length === 0 ? (
-        <div className="empty-ranking">아직 등록된 정답 기록이 없습니다.</div>
+        <p className="empty-state">아직 등록된 정답 기록이 없어요.</p>
       ) : (
-        <ol>
+        <ol className="ranking-list">
           {rankings.slice(0, 10).map((ranking, index) => (
             <li
               key={ranking.id}
-              className={ranking.id === lastRankingId ? "my-ranking" : undefined}
+              className={`list-row ${index === 0 ? "list-row-first" : ""} ${
+                ranking.id === lastRankingId ? "list-row-me" : ""
+              }`}
             >
-              <span className="rank-number">{index + 1}</span>
-              <strong>{ranking.playerName}</strong>
-              <em>{formatElapsed(ranking.elapsedMs)}</em>
+              <span className={`rank-badge ${index === 0 ? "rank-badge-first" : ""}`}>
+                {index + 1}
+              </span>
+              <strong className="list-row-title">{ranking.playerName}</strong>
+              <span className="list-row-value tabular">{formatElapsed(ranking.elapsedMs)}</span>
             </li>
           ))}
         </ol>
       )}
-    </div>
+    </section>
   );
 }
