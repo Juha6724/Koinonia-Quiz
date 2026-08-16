@@ -311,7 +311,7 @@ export default function SpeedQuizApp() {
         <div className={`screen-body ${phase === "ranking" ? "screen-body-scroll" : ""}`}>
           {phase === "intro" && (
             <section className="flow-screen">
-              <div className="flow-head">
+              <div className="flow-head flow-head-center">
                 <span className="chip">순발력 챌린지</span>
                 <h1 className="display-title">
                   퀴즈가 나오자마자
@@ -327,7 +327,7 @@ export default function SpeedQuizApp() {
                 </p>
               </div>
 
-              <form className="name-form" id="name-form" onSubmit={handleNameSubmit}>
+              <form className="name-form" onSubmit={handleNameSubmit}>
                 <div className="field-group">
                   <label className="field-label" htmlFor="playerName">
                     이름
@@ -343,6 +343,9 @@ export default function SpeedQuizApp() {
                     autoFocus
                   />
                 </div>
+                <button type="submit" className="btn-primary btn-primary-xl" disabled={!cleanName}>
+                  다음으로
+                </button>
               </form>
 
               {topRanking && (
@@ -453,7 +456,7 @@ export default function SpeedQuizApp() {
 
           {phase === "ranking" && (
             <section className="ranking-screen">
-              <div className="result-card">
+              <div className="result-card flow-head-center">
                 {resultState === "correct" ? (
                   <>
                     <span className="chip chip-success">정답 등록 완료</span>
@@ -491,19 +494,6 @@ export default function SpeedQuizApp() {
           )}
         </div>
 
-        {phase === "intro" && (
-          <div className="bottom-cta">
-            <button
-              type="submit"
-              form="name-form"
-              className="btn-primary btn-primary-xl"
-              disabled={!cleanName}
-            >
-              다음으로
-            </button>
-          </div>
-        )}
-
         {(phase === "ready" || phase === "practiceDone") && (
           <div className="bottom-cta">
             <button
@@ -515,13 +505,15 @@ export default function SpeedQuizApp() {
             </button>
           </div>
         )}
-
-        <footer className="app-footer">
-          <button type="button" className="text-button text-button-muted" onClick={() => void handleResetRankings()}>
-            관리자 랭킹 리셋
-          </button>
-        </footer>
       </div>
+
+      <button
+        type="button"
+        className="admin-reset-fab"
+        onClick={() => void handleResetRankings()}
+      >
+        관리자 랭킹 리셋
+      </button>
     </main>
   );
 }
