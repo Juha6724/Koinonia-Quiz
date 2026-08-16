@@ -382,7 +382,11 @@ export default function SpeedQuizApp() {
                 <h2 className="question-title">{question.prompt}</h2>
               </article>
 
-              <div className="choice-grid">
+              <div
+                className={`choice-grid ${
+                  question.choiceType === "image" ? "choice-grid-image" : "choice-grid-text"
+                }`}
+              >
                 {question.choices.map((choice, index) => {
                   const isSelected = selectedIndex === index;
                   const isAnswer = question.answerIndex === index;
