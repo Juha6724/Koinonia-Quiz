@@ -293,19 +293,11 @@ export default function SpeedQuizApp() {
 
   return (
     <main className="app-shell">
-      <section className="orb orb-one" />
-      <section className="orb orb-two" />
-
       <div className="kiosk-card">
         <header className="app-header">
           <div>
             <p className="eyebrow">Koinonia Speed Quiz</p>
             <h1>빛의 속도로 정답을 클릭하세요!</h1>
-          </div>
-          <div className={`storage-pill storage-pill-${storageMode}`}>
-            {storageMode === "checking" && "연결 확인 중"}
-            {storageMode === "supabase" && "Supabase 랭킹"}
-            {storageMode === "local" && "기기 저장 모드"}
           </div>
         </header>
 
@@ -459,7 +451,6 @@ export default function SpeedQuizApp() {
         )}
 
         <footer className="app-footer">
-          <span>오늘 기준: {getKstDayKey()} KST</span>
           <button className="reset-button" onClick={() => void handleResetRankings()}>
             관리자 랭킹 리셋
           </button>
