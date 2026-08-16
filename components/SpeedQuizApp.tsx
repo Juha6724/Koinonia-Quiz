@@ -349,11 +349,9 @@ export default function SpeedQuizApp() {
               </form>
 
               {topRanking && (
-                <div className="list-row list-row-highlight">
-                  <div className="list-row-main">
-                    <span className="list-row-label">오늘 1등</span>
-                    <strong className="list-row-title">{topRanking.playerName}</strong>
-                  </div>
+                <div className="list-row list-row-highlight list-row-single">
+                  <span className="list-row-single-label">오늘 1등</span>
+                  <strong className="list-row-title">{topRanking.playerName}</strong>
                   <span className="list-row-value">{formatElapsed(topRanking.elapsedMs)}</span>
                 </div>
               )}
@@ -380,10 +378,7 @@ export default function SpeedQuizApp() {
 
           {phase === "quiz" && (
             <section className="quiz-screen">
-              <article
-                className={`question-card ${question.visual ? "" : "question-card-text-only"}`}
-              >
-                {question.visual && <div className="visual-card">{question.visual}</div>}
+              <article className="question-card question-card-text-only">
                 <h2 className="question-title">{question.prompt}</h2>
               </article>
 

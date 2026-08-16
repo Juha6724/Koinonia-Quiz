@@ -87,7 +87,7 @@ button:disabled {
   width: 100%;
   height: 100dvh;
   min-height: 100dvh;
-  padding: clamp(10px, 2vmin, 40px);
+  padding: clamp(4px, 0.8vmin, 12px);
 }
 
 .kiosk-card {
@@ -95,8 +95,8 @@ button:disabled {
   flex-direction: column;
   width: 100%;
   height: 100%;
-  max-width: min(96vw, 1120px);
-  max-height: min(96dvh, 900px);
+  max-width: min(99vw, 1120px);
+  max-height: min(99dvh, 960px);
   min-height: 0;
   overflow: hidden;
   background: var(--white);
@@ -154,7 +154,7 @@ button:disabled {
 .screen-body {
   flex: 1;
   min-height: 0;
-  padding: clamp(8px, 1.5vmin, 20px) clamp(20px, 3vw, 40px) clamp(16px, 2vmin, 24px);
+  padding: clamp(4px, 1vmin, 12px) clamp(16px, 2.5vw, 28px) clamp(10px, 1.5vmin, 16px);
   overflow: hidden;
 }
 
@@ -165,9 +165,9 @@ button:disabled {
 /* ── Typography (TDS ramp, kiosk-scaled) ── */
 
 .display-title {
-  margin: 0 0 16px;
+  margin: 0 0 14px;
   color: var(--grey-900);
-  font-size: clamp(34px, 6vmin, 52px);
+  font-size: clamp(36px, 7vmin, 58px);
   font-weight: 700;
   line-height: 1.28;
   letter-spacing: -0.02em;
@@ -176,14 +176,14 @@ button:disabled {
 }
 
 .display-title-sm {
-  font-size: clamp(30px, 5vmin, 44px);
+  font-size: clamp(32px, 6vmin, 48px);
   line-height: 1.32;
 }
 
 .body-text {
   margin: 0;
   color: var(--grey-700);
-  font-size: clamp(18px, 2.8vmin, 24px);
+  font-size: clamp(19px, 3.2vmin, 26px);
   font-weight: 400;
   line-height: 1.55;
   letter-spacing: -0.005em;
@@ -237,7 +237,7 @@ button:disabled {
 .flow-screen {
   display: flex;
   flex-direction: column;
-  gap: clamp(20px, 3vmin, 32px);
+  gap: clamp(16px, 2.5vmin, 24px);
   align-items: center;
   justify-content: center;
   height: 100%;
@@ -390,8 +390,20 @@ button:disabled {
 
 .list-row-highlight {
   width: 100%;
-  max-width: min(480px, 100%);
+  max-width: min(520px, 100%);
   background: var(--grey-50);
+}
+
+.list-row-single {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.list-row-single-label {
+  color: var(--grey-700);
+  font-size: clamp(16px, 2.2vmin, 18px);
+  font-weight: 600;
+  line-height: 1.45;
+  white-space: nowrap;
 }
 
 .list-row-first {
@@ -757,8 +769,41 @@ button:disabled {
 }
 
 @media (min-width: 768px) {
+  .app-shell {
+    padding: 6px;
+  }
+
   .kiosk-card {
-    max-width: min(92vw, 960px);
+    max-width: min(99.5vw, 1120px);
+    max-height: min(99.5dvh, 980px);
+  }
+
+  .screen-body {
+    padding: 6px 20px 10px;
+  }
+
+  .top-bar,
+  .quiz-bar {
+    min-height: 48px;
+    padding: 0 20px;
+  }
+
+  .display-title {
+    font-size: clamp(40px, 7.5vmin, 60px);
+  }
+
+  .body-text {
+    font-size: clamp(20px, 3.4vmin, 28px);
+  }
+
+  .text-field-lg {
+    min-height: clamp(60px, 9vmin, 76px);
+    font-size: clamp(24px, 4vmin, 34px);
+  }
+
+  .btn-primary-xl {
+    min-height: clamp(60px, 9vmin, 76px);
+    font-size: clamp(18px, 2.8vmin, 24px);
   }
 
   .choice-grid {
@@ -766,14 +811,22 @@ button:disabled {
   }
 
   .choice-label {
-    font-size: clamp(20px, 2.5vmin, 28px);
+    font-size: clamp(20px, 2.8vmin, 30px);
+  }
+
+  .question-title {
+    font-size: clamp(28px, 5vmin, 48px);
   }
 }
 
 @media (min-width: 1024px) {
   .kiosk-card {
-    max-width: min(86vw, 1040px);
-    max-height: min(86dvh, 860px);
+    max-width: min(92vw, 1040px);
+    max-height: min(92dvh, 860px);
+  }
+
+  .app-shell {
+    padding: clamp(8px, 1.5vmin, 20px);
   }
 }
 

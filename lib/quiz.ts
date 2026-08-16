@@ -32,8 +32,7 @@ export type QuizRow = {
 
 export const practiceQuestion: QuizQuestion = {
   id: "practice-light",
-  prompt: "연습 문제: 화면에 보이는 단어는 무엇일까요?",
-  visual: "빛",
+  prompt: "연습 문제: '빛'을 골라 보세요.",
   choices: ["빛", "소금", "물", "구름"],
   choiceType: "text",
   answerIndex: 0
@@ -80,7 +79,7 @@ export function toQuizQuestion(row: QuizRow): QuizQuestion {
   return {
     id: row.id,
     prompt: row.prompt,
-    visual: row.visual,
+    visual: null,
     choices: [row.choice_1, row.choice_2, row.choice_3, row.choice_4],
     choiceImages: [
       row.choice_image_1 ?? "",
