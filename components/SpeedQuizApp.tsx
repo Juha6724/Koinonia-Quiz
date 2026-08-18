@@ -378,8 +378,21 @@ export default function SpeedQuizApp() {
 
           {phase === "quiz" && (
             <section className="quiz-screen">
-              <article className="question-card question-card-text-only">
-                <h2 className="question-title">{question.prompt}</h2>
+              <article
+                className={`question-card ${
+                  question.promptType === "image" ? "question-card-image" : "question-card-text-only"
+                }`}
+              >
+                {question.promptType === "image" && question.promptImage ? (
+                  <img
+                    src={question.promptImage}
+                    alt={question.prompt || "문제 사진"}
+                    className="question-photo"
+                    draggable={false}
+                  />
+                ) : (
+                  <h2 className="question-title">{question.prompt}</h2>
+                )}
               </article>
 
               <div

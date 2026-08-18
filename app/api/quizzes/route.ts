@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { quizQuestions, QuizChoiceType, QuizRow, toQuizQuestion } from "@/lib/quiz";
+import { quizQuestions, QuizChoiceType, QuizPromptType, QuizRow, toQuizQuestion } from "@/lib/quiz";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
 type QuizPayload = {
   prompt: string;
+  promptType: QuizPromptType;
+  promptImage: string;
   choices: string[];
   choiceType: QuizChoiceType;
   choiceImages: string[];
@@ -15,7 +17,7 @@ type QuizPayload = {
 };
 
 const QUIZ_SELECT =
-  "id, prompt, visual, choice_1, choice_2, choice_3, choice_4, choice_type, choice_image_1, choice_image_2, choice_image_3, choice_image_4, answer_index, is_active, created_at, updated_at";
+  "id, prompt, prompt_type, prompt_image, visual, choice_1, choice_2, choice_3, choice_4, choice_type, choice_image_1, choice_image_2, choice_image_3, choice_image_4, answer_index, is_active, created_at, updated_at";
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -37,6 +39,8 @@ function readPayload(body: unknown): QuizPayload | null {
 
   const source = body as Record<string, unknown>;
   const prompt = String(source.prompt ?? "").trim().slice(0, 180);
+  const promptType: QuizPromptType = source.promptType === "image" ? "image" : "text";
+  const promptImage = String(source.promptImage ?? "").trim();
   const choiceType: QuizChoiceType = source.choiceType === "image" ? "image" : "text";
   const choices = Array.isArray(source.choices)
     ? source.choices.map((choice) => String(choice ?? "").trim().slice(0, 80))
@@ -47,7 +51,15 @@ function readPayload(body: unknown): QuizPayload | null {
   const answerIndex = Number(source.answerIndex);
   const isActive = typeof source.isActive === "boolean" ? source.isActive : true;
 
-  if (prompt.length < 2 || choices.length !== 4) {
+  if (choices.length !== 4) {
+    return null;
+  }
+
+  if (promptType === "text" && prompt.length < 2) {
+    return null;
+  }
+
+  if (promptType === "image" && !promptImage) {
     return null;
   }
 
@@ -61,11 +73,12 @@ function readPayload(body: unknown): QuizPayload | null {
     }
   }
 
+  const normalizedPrompt =
+    promptType === "image" ? prompt || "문제 사진" : prompt;
   const normalizedChoices = choices.map((choice, index) =>
-    choice || `사진 선택지 ${index + 1}`
+    choiceType === "image" ? choice || `선택지 ${index + 1}` : choice
   );
-  const normalizedImages =
-    choiceType === "image" ? choiceImages : ["", "", "", ""];
+  const normalizedImages = choiceType === "image" ? choiceImages : ["", "", "", ""];
 
   if (choiceType === "text" && normalizedChoices.some((choice) => !choice)) {
     return null;
@@ -76,7 +89,9 @@ function readPayload(body: unknown): QuizPayload | null {
   }
 
   return {
-    prompt,
+    prompt: normalizedPrompt,
+    promptType,
+    promptImage: promptType === "image" ? promptImage : "",
     choices: normalizedChoices,
     choiceType,
     choiceImages: normalizedImages,
@@ -88,6 +103,8 @@ function readPayload(body: unknown): QuizPayload | null {
 function toQuizInsert(payload: QuizPayload) {
   return {
     prompt: payload.prompt,
+    prompt_type: payload.promptType,
+    prompt_image: payload.promptType === "image" ? payload.promptImage : null,
     visual: null,
     choice_1: payload.choices[0],
     choice_2: payload.choices[1],
@@ -106,6 +123,8 @@ function toQuizInsert(payload: QuizPayload) {
 function toQuizInsertFromDefault(question: (typeof quizQuestions)[number]) {
   return {
     prompt: question.prompt,
+    prompt_type: question.promptType ?? "text",
+    prompt_image: question.promptImage ?? null,
     visual: null,
     choice_1: question.choices[0],
     choice_2: question.choices[1],

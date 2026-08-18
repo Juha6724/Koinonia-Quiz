@@ -4,11 +4,21 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
-import { QuizChoiceType, QuizQuestion } from "@/lib/quiz";
+import {
+  formatToTypes,
+  getQuizFormat,
+  getQuizFormatLabel,
+  QuizChoiceType,
+  QuizFormat,
+  QuizPromptType,
+  QuizQuestion
+} from "@/lib/quiz";
 
 type QuizFormState = {
   id: string | null;
   prompt: string;
+  promptType: QuizPromptType;
+  promptImage: string;
   choices: string[];
   choiceType: QuizChoiceType;
   choiceImages: string[];
@@ -19,12 +29,40 @@ type QuizFormState = {
 const emptyForm: QuizFormState = {
   id: null,
   prompt: "",
+  promptType: "text",
+  promptImage: "",
   choices: ["", "", "", ""],
   choiceType: "text",
   choiceImages: ["", "", "", ""],
   answerIndex: 0,
   isActive: true
 };
+
+const QUIZ_FORMAT_OPTIONS: Array<{
+  format: QuizFormat;
+  title: string;
+  description: string;
+}> = [
+  {
+    format: "text-text",
+    title: "글자 문제",
+    description: "글자 선택지 4개"
+  },
+  {
+    format: "text-image",
+    title: "글자 문제",
+    description: "사진 선택지 4개"
+  },
+  {
+    format: "image-text",
+    title: "사진 문제",
+    description: "글자 선택지 4개"
+  }
+];
+
+function isPlaceholderChoice(value: string) {
+  return /^사진 선택지 \d+$/.test(value) || /^선택지 \d+$/.test(value);
+}
 
 function readFileAsImage(file: File) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -70,6 +108,8 @@ export default function AdminQuizPage() {
   const [message, setMessage] = useState("");
   const [quizzes, setQuizzes] = useState<QuizQuestion[]>([]);
   const [form, setForm] = useState<QuizFormState>(emptyForm);
+
+  const currentFormat = getQuizFormat(form);
 
   async function loadQuizzes(pin: string) {
     setIsLoading(true);
@@ -155,14 +195,39 @@ export default function AdminQuizPage() {
     }
   }
 
-  function updateChoiceType(choiceType: QuizChoiceType) {
+  async function updatePromptImage(file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    setMessage("문제 사진을 압축하고 있습니다.");
+
+    try {
+      const imageDataUrl = await compressImageFile(file);
+      setForm((current) => ({
+        ...current,
+        promptImage: imageDataUrl
+      }));
+      setMessage("문제 사진을 불러왔습니다.");
+    } catch {
+      setMessage("문제 사진을 불러오지 못했습니다. 다른 이미지를 선택해 주세요.");
+    }
+  }
+
+  function updateQuizFormat(format: QuizFormat) {
+    const { promptType, choiceType } = formatToTypes(format);
+
     setForm((current) => ({
       ...current,
+      promptType,
       choiceType,
+      promptImage: promptType === "text" ? "" : current.promptImage,
+      choiceImages:
+        choiceType === "text" ? ["", "", "", ""] : current.choiceImages,
       choices:
-        choiceType === "image"
-          ? current.choices.map((choice, index) => choice || `사진 선택지 ${index + 1}`)
-          : current.choices
+        choiceType === "text"
+          ? current.choices.map((choice) => (isPlaceholderChoice(choice) ? "" : choice))
+          : current.choices.map((choice, index) => choice || `선택지 ${index + 1}`)
     }));
   }
 
@@ -170,7 +235,11 @@ export default function AdminQuizPage() {
     setForm({
       id: quiz.id,
       prompt: quiz.prompt,
-      choices: [...quiz.choices],
+      promptType: quiz.promptType ?? "text",
+      promptImage: quiz.promptImage ?? "",
+      choices: quiz.choices.map((choice) =>
+        quiz.choiceType === "text" && isPlaceholderChoice(choice) ? "" : choice
+      ),
       choiceType: quiz.choiceType,
       choiceImages: quiz.choiceImages ?? ["", "", "", ""],
       answerIndex: quiz.answerIndex,
@@ -201,6 +270,8 @@ export default function AdminQuizPage() {
         body: JSON.stringify({
           id: form.id,
           prompt: form.prompt,
+          promptType: form.promptType,
+          promptImage: form.promptImage,
           choices: form.choices,
           choiceType: form.choiceType,
           choiceImages: form.choiceImages,
@@ -301,39 +372,66 @@ export default function AdminQuizPage() {
                 )}
               </div>
 
-              <label>
-                문제
-                <textarea
-                  value={form.prompt}
-                  onChange={(event) => setForm({ ...form, prompt: event.target.value })}
-                  placeholder="예: 우리교회 목사님 성함은?"
-                  required
-                />
-              </label>
-
-              <fieldset className="choice-type-fieldset">
-                <legend>선택지 형태</legend>
-                <div className="choice-type-options">
-                  <label>
-                    <input
-                      type="radio"
-                      name="choiceType"
-                      checked={form.choiceType === "text"}
-                      onChange={() => updateChoiceType("text")}
-                    />
-                    글자 선택지
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="choiceType"
-                      checked={form.choiceType === "image"}
-                      onChange={() => updateChoiceType("image")}
-                    />
-                    사진 선택지
-                  </label>
+              <fieldset className="quiz-format-fieldset">
+                <legend>문제 형식</legend>
+                <div className="quiz-format-grid">
+                  {QUIZ_FORMAT_OPTIONS.map((option) => (
+                    <button
+                      key={option.format}
+                      type="button"
+                      className={`quiz-format-card quiz-format-${option.format} ${
+                        currentFormat === option.format ? "quiz-format-card-active" : ""
+                      }`}
+                      onClick={() => updateQuizFormat(option.format)}
+                    >
+                      <span className="quiz-format-card-tag">{option.title}</span>
+                      <strong className="quiz-format-card-title">{option.description}</strong>
+                      <span className="quiz-format-card-caption">
+                        {getQuizFormatLabel(option.format)}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </fieldset>
+
+              {form.promptType === "text" ? (
+                <label>
+                  문제 문장
+                  <textarea
+                    value={form.prompt}
+                    onChange={(event) => setForm({ ...form, prompt: event.target.value })}
+                    placeholder="예: 우리교회 목사님 성함은?"
+                    required
+                  />
+                </label>
+              ) : (
+                <div className="prompt-image-editor">
+                  <label>
+                    문제 사진 설명 (선택)
+                    <input
+                      value={form.prompt}
+                      onChange={(event) => setForm({ ...form, prompt: event.target.value })}
+                      placeholder="예: 교회 로고"
+                    />
+                  </label>
+                  <label>
+                    문제 사진
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(event) => void updatePromptImage(event.target.files?.[0])}
+                      required={!form.promptImage}
+                    />
+                  </label>
+                  {form.promptImage && (
+                    <img
+                      src={form.promptImage}
+                      alt={form.prompt || "문제 사진 미리보기"}
+                      className="admin-prompt-preview"
+                    />
+                  )}
+                </div>
+              )}
 
               <fieldset>
                 <legend>{form.choiceType === "image" ? "사진 선택지 4개" : "글자 선택지 4개"}</legend>
@@ -357,7 +455,7 @@ export default function AdminQuizPage() {
                       ) : (
                         <div className="image-choice-fields">
                           <input
-                            value={choice}
+                            value={isPlaceholderChoice(choice) ? "" : choice}
                             onChange={(event) => updateChoice(index, event.target.value)}
                             placeholder={`사진 설명 ${index + 1}`}
                           />
@@ -372,7 +470,7 @@ export default function AdminQuizPage() {
                           {form.choiceImages[index] && (
                             <img
                               src={form.choiceImages[index]}
-                              alt={`${choice || `선택지 ${index + 1}`} 미리보기`}
+                              alt={choice || `선택지 ${index + 1} 미리보기`}
                               className="admin-choice-preview"
                             />
                           )}
@@ -422,11 +520,19 @@ export default function AdminQuizPage() {
                         <span className={quiz.isActive ? "active-label" : "inactive-label"}>
                           {quiz.isActive ? "사용 중" : "숨김"}
                         </span>
-                        <strong>{quiz.choiceType === "image" ? "사진 선택지 퀴즈" : "글자 선택지 퀴즈"}</strong>
-                        <p>{quiz.prompt}</p>
+                        <strong>{getQuizFormatLabel(getQuizFormat(quiz))}</strong>
+                        {quiz.promptType === "image" && quiz.promptImage ? (
+                          <img
+                            src={quiz.promptImage}
+                            alt={quiz.prompt || "문제 사진"}
+                            className="admin-prompt-preview admin-prompt-preview-list"
+                          />
+                        ) : (
+                          <p>{quiz.prompt}</p>
+                        )}
                         <small>
-                          정답: {quiz.choices[quiz.answerIndex]} / 선택지{" "}
-                          {quiz.choices.join(", ")}
+                          정답: {quiz.choices[quiz.answerIndex]}
+                          {quiz.choiceType === "text" ? ` / ${quiz.choices.join(", ")}` : ""}
                         </small>
                         {quiz.choiceType === "image" && (
                           <div className="admin-list-images">
