@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import {
+  fetchQuizRows,
+  isMissingPromptTypeColumnError,
+  MIGRATION_HINT,
+  QUIZ_SELECT,
+  QUIZ_SELECT_LEGACY,
+  toQuizRowInsert,
+  toQuizRowInsertFromDefault
+} from "@/lib/quizDb";
 import { quizQuestions, QuizChoiceType, QuizPromptType, QuizRow, toQuizQuestion } from "@/lib/quiz";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -15,9 +24,6 @@ type QuizPayload = {
   answerIndex: number;
   isActive: boolean;
 };
-
-const QUIZ_SELECT =
-  "id, prompt, prompt_type, prompt_image, visual, choice_1, choice_2, choice_3, choice_4, choice_type, choice_image_1, choice_image_2, choice_image_3, choice_image_4, answer_index, is_active, created_at, updated_at";
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -73,8 +79,7 @@ function readPayload(body: unknown): QuizPayload | null {
     }
   }
 
-  const normalizedPrompt =
-    promptType === "image" ? prompt || "문제 사진" : prompt;
+  const normalizedPrompt = promptType === "image" ? prompt || "문제 사진" : prompt;
   const normalizedChoices = choices.map((choice, index) =>
     choiceType === "image" ? choice || `선택지 ${index + 1}` : choice
   );
@@ -100,44 +105,27 @@ function readPayload(body: unknown): QuizPayload | null {
   };
 }
 
-function toQuizInsert(payload: QuizPayload) {
-  return {
-    prompt: payload.prompt,
-    prompt_type: payload.promptType,
-    prompt_image: payload.promptType === "image" ? payload.promptImage : null,
-    visual: null,
-    choice_1: payload.choices[0],
-    choice_2: payload.choices[1],
-    choice_3: payload.choices[2],
-    choice_4: payload.choices[3],
-    choice_type: payload.choiceType,
-    choice_image_1: payload.choiceImages[0] || null,
-    choice_image_2: payload.choiceImages[1] || null,
-    choice_image_3: payload.choiceImages[2] || null,
-    choice_image_4: payload.choiceImages[3] || null,
-    answer_index: payload.answerIndex,
-    is_active: payload.isActive
-  };
-}
+async function insertQuizRow(
+  supabase: NonNullable<ReturnType<typeof createSupabaseAdmin>>,
+  payload: QuizPayload,
+  usesLegacySchema: boolean
+) {
+  if (usesLegacySchema && payload.promptType === "image") {
+    return {
+      data: null,
+      error: {
+        message: `사진 문제 형식을 쓰려면 DB 마이그레이션이 필요합니다. ${MIGRATION_HINT}`
+      }
+    };
+  }
 
-function toQuizInsertFromDefault(question: (typeof quizQuestions)[number]) {
-  return {
-    prompt: question.prompt,
-    prompt_type: question.promptType ?? "text",
-    prompt_image: question.promptImage ?? null,
-    visual: null,
-    choice_1: question.choices[0],
-    choice_2: question.choices[1],
-    choice_3: question.choices[2],
-    choice_4: question.choices[3],
-    choice_type: question.choiceType,
-    choice_image_1: question.choiceImages?.[0] || null,
-    choice_image_2: question.choiceImages?.[1] || null,
-    choice_image_3: question.choiceImages?.[2] || null,
-    choice_image_4: question.choiceImages?.[3] || null,
-    answer_index: question.answerIndex,
-    is_active: true
-  };
+  const select = usesLegacySchema ? QUIZ_SELECT_LEGACY : QUIZ_SELECT;
+
+  return supabase
+    .from("quizzes")
+    .insert(toQuizRowInsert(payload, !usesLegacySchema))
+    .select(select)
+    .single();
 }
 
 export async function GET(request: NextRequest) {
@@ -157,38 +145,47 @@ export async function GET(request: NextRequest) {
     return jsonError("관리자 PIN이 올바르지 않습니다.", 401);
   }
 
-  let query = supabase.from("quizzes").select(QUIZ_SELECT).order("created_at", {
-    ascending: false
-  });
+  let { rows, usesLegacySchema, error } = await fetchQuizRows(supabase, isAdmin);
 
-  if (!isAdmin) {
-    query = query.eq("is_active", true);
+  if (error) {
+    return jsonError(error, 500);
   }
 
-  const result = await query;
-  let data = result.data ?? [];
-
-  if (result.error) {
-    return jsonError(result.error.message, 500);
-  }
-
-  if (isAdmin && data.length === 0) {
+  if (isAdmin && rows.length === 0) {
+    const select = usesLegacySchema ? QUIZ_SELECT_LEGACY : QUIZ_SELECT;
     const seeded = await supabase
       .from("quizzes")
-      .insert(quizQuestions.map(toQuizInsertFromDefault))
-      .select(QUIZ_SELECT)
+      .insert(quizQuestions.map((question) => toQuizRowInsertFromDefault(question, !usesLegacySchema)))
+      .select(select)
       .order("created_at", { ascending: false });
 
     if (seeded.error) {
-      return jsonError(seeded.error.message, 500);
-    }
+      if (!usesLegacySchema && isMissingPromptTypeColumnError(seeded.error.message)) {
+        const legacySeeded = await supabase
+          .from("quizzes")
+          .insert(quizQuestions.map((question) => toQuizRowInsertFromDefault(question, false)))
+          .select(QUIZ_SELECT_LEGACY)
+          .order("created_at", { ascending: false });
 
-    data = seeded.data;
+        if (legacySeeded.error) {
+          return jsonError(legacySeeded.error.message, 500);
+        }
+
+        rows = (legacySeeded.data ?? []) as QuizRow[];
+        usesLegacySchema = true;
+      } else {
+        return jsonError(seeded.error.message, 500);
+      }
+    } else {
+      rows = (seeded.data ?? []) as QuizRow[];
+    }
   }
 
   return NextResponse.json({
     configured: true,
-    quizzes: (data as QuizRow[]).map(toQuizQuestion)
+    schemaNeedsMigration: usesLegacySchema,
+    migrationHint: usesLegacySchema ? MIGRATION_HINT : null,
+    quizzes: rows.map(toQuizQuestion)
   });
 }
 
@@ -211,11 +208,8 @@ export async function POST(request: NextRequest) {
     return jsonError("퀴즈 내용을 모두 올바르게 입력해 주세요.", 400);
   }
 
-  const { data, error } = await supabase
-    .from("quizzes")
-    .insert(toQuizInsert(payload))
-    .select(QUIZ_SELECT)
-    .single();
+  const { usesLegacySchema } = await fetchQuizRows(supabase, true);
+  const { data, error } = await insertQuizRow(supabase, payload, usesLegacySchema);
 
   if (error) {
     return jsonError(error.message, 500);
@@ -248,11 +242,18 @@ export async function PATCH(request: NextRequest) {
     return jsonError("수정할 퀴즈 정보가 올바르지 않습니다.", 400);
   }
 
+  const { usesLegacySchema } = await fetchQuizRows(supabase, true);
+
+  if (usesLegacySchema && payload.promptType === "image") {
+    return jsonError(`사진 문제 형식을 쓰려면 DB 마이그레이션이 필요합니다. ${MIGRATION_HINT}`, 500);
+  }
+
+  const select = usesLegacySchema ? QUIZ_SELECT_LEGACY : QUIZ_SELECT;
   const { data, error } = await supabase
     .from("quizzes")
-    .update(toQuizInsert(payload))
+    .update(toQuizRowInsert(payload, !usesLegacySchema))
     .eq("id", id)
-    .select(QUIZ_SELECT)
+    .select(select)
     .single();
 
   if (error) {

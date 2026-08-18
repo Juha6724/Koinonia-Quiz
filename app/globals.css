@@ -1266,6 +1266,19 @@ button:disabled {
   background: var(--grey-100);
 }
 
+.admin-migration-sql {
+  margin: 12px 0 0;
+  padding: 12px;
+  overflow-x: auto;
+  color: var(--grey-900);
+  background: var(--white);
+  border: 1px solid var(--grey-200);
+  border-radius: var(--radius-m);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .quiz-format-fieldset {
   display: grid;
   gap: 12px;

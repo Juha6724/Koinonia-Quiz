@@ -108,6 +108,8 @@ export default function AdminQuizPage() {
   const [message, setMessage] = useState("");
   const [quizzes, setQuizzes] = useState<QuizQuestion[]>([]);
   const [form, setForm] = useState<QuizFormState>(emptyForm);
+  const [schemaNeedsMigration, setSchemaNeedsMigration] = useState(false);
+  const [migrationHint, setMigrationHint] = useState("");
 
   const currentFormat = getQuizFormat(form);
 
@@ -136,6 +138,8 @@ export default function AdminQuizPage() {
       }
 
       setConfigured(true);
+      setSchemaNeedsMigration(Boolean(data.schemaNeedsMigration));
+      setMigrationHint(typeof data.migrationHint === "string" ? data.migrationHint : "");
       setQuizzes(data.quizzes as QuizQuestion[]);
       return true;
     } catch {
@@ -565,6 +569,16 @@ export default function AdminQuizPage() {
         )}
 
         {message && <div className="admin-message">{message}</div>}
+        {schemaNeedsMigration && (
+          <div className="admin-warning">
+            사진 문제 형식을 쓰려면 Supabase에 새 컬럼이 필요합니다. SQL Editor에서 아래를
+            실행해 주세요.
+            <pre className="admin-migration-sql">{`alter table public.quizzes
+  add column if not exists prompt_type text not null default 'text',
+  add column if not exists prompt_image text;`}</pre>
+            {migrationHint}
+          </div>
+        )}
         {configured === false && (
           <div className="admin-warning">
             Supabase 연결이 필요합니다. Vercel 환경변수와 `quizzes` 테이블을 확인해 주세요.
