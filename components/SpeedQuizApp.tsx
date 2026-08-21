@@ -58,6 +58,7 @@ export default function SpeedQuizApp() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [startedAt, setStartedAt] = useState(0);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
+  const [liveElapsedMs, setLiveElapsedMs] = useState(0);
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [quizPool, setQuizPool] = useState<QuizQuestion[]>([]);
   const [quizQueue, setQuizQueue] = useState<string[]>([]);
@@ -152,6 +153,23 @@ export default function SpeedQuizApp() {
     };
   }, [phase]);
 
+  useEffect(() => {
+    if (phase !== "quiz" || elapsedMs !== null) {
+      return;
+    }
+
+    let frame = 0;
+
+    const tick = () => {
+      setLiveElapsedMs(Math.max(0, performance.now() - startedAt));
+      frame = window.requestAnimationFrame(tick);
+    };
+
+    frame = window.requestAnimationFrame(tick);
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [elapsedMs, phase, startedAt]);
+
   function showRankingAfterDelay() {
     window.setTimeout(() => {
       setAutoReturnLeft(AUTO_RETURN_SECONDS);
@@ -206,6 +224,7 @@ export default function SpeedQuizApp() {
     setIsPracticeRound(practice);
     setSelectedIndex(null);
     setElapsedMs(null);
+    setLiveElapsedMs(0);
     setResultState("idle");
     setLastRankingId(null);
     hasAnsweredRef.current = false;
@@ -332,8 +351,8 @@ export default function SpeedQuizApp() {
         {phase === "quiz" && (
           <header className="quiz-bar">
             <span className="quiz-bar-label">{isPracticeRound ? "연습 게임" : "실전 게임"}</span>
-            <span className="quiz-bar-timer">
-              {elapsedMs === null ? "측정 중" : formatElapsed(elapsedMs)}
+            <span className="quiz-bar-timer tabular">
+              {formatElapsed(elapsedMs ?? liveElapsedMs)}
             </span>
           </header>
         )}
