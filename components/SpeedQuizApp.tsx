@@ -387,7 +387,7 @@ export default function SpeedQuizApp() {
                     maxLength={20}
                     value={playerName}
                     onChange={(event) => setPlayerName(event.target.value)}
-                    placeholder="예: 민준"
+                    placeholder="예: 김주은"
                     autoComplete="off"
                     autoFocus
                   />
