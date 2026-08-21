@@ -119,13 +119,13 @@ async function insertQuizRow(
     };
   }
 
-  const select = usesLegacySchema ? QUIZ_SELECT_LEGACY : QUIZ_SELECT;
+  const row = toQuizRowInsert(payload, !usesLegacySchema) as never;
 
-  return supabase
-    .from("quizzes")
-    .insert(toQuizRowInsert(payload, !usesLegacySchema))
-    .select(select)
-    .single();
+  if (usesLegacySchema) {
+    return supabase.from("quizzes").insert(row).select(QUIZ_SELECT_LEGACY).single();
+  }
+
+  return supabase.from("quizzes").insert(row).select(QUIZ_SELECT).single();
 }
 
 export async function GET(request: NextRequest) {
@@ -154,7 +154,7 @@ export async function GET(request: NextRequest) {
   if (isAdmin && rows.length === 0) {
     const insertPayload = quizQuestions.map((question) =>
       toQuizRowInsertFromDefault(question, !usesLegacySchema)
-    );
+    ) as never[];
     const seeded = usesLegacySchema
       ? await supabase
           .from("quizzes")
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
       if (!usesLegacySchema && isMissingPromptTypeColumnError(seeded.error.message)) {
         const legacySeeded = await supabase
           .from("quizzes")
-          .insert(quizQuestions.map((question) => toQuizRowInsertFromDefault(question, false)))
+          .insert(quizQuestions.map((question) => toQuizRowInsertFromDefault(question, false)) as never[])
           .select(QUIZ_SELECT_LEGACY)
           .order("created_at", { ascending: false });
 
@@ -256,13 +256,11 @@ export async function PATCH(request: NextRequest) {
     return jsonError(`사진 문제 형식을 쓰려면 DB 마이그레이션이 필요합니다. ${MIGRATION_HINT}`, 500);
   }
 
-  const select = usesLegacySchema ? QUIZ_SELECT_LEGACY : QUIZ_SELECT;
-  const { data, error } = await supabase
-    .from("quizzes")
-    .update(toQuizRowInsert(payload, !usesLegacySchema))
-    .eq("id", id)
-    .select(select)
-    .single();
+  const row = toQuizRowInsert(payload, !usesLegacySchema) as never;
+  const updated = usesLegacySchema
+    ? await supabase.from("quizzes").update(row).eq("id", id).select(QUIZ_SELECT_LEGACY).single()
+    : await supabase.from("quizzes").update(row).eq("id", id).select(QUIZ_SELECT).single();
+  const { data, error } = updated;
 
   if (error) {
     return jsonError(error.message, 500);
