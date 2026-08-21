@@ -206,7 +206,6 @@ export default function AdminQuizPage() {
       ...current,
       promptType,
       choiceType,
-      prompt: promptType === "image" ? "" : current.prompt,
       promptImage: promptType === "text" ? "" : current.promptImage,
       choiceImages: choiceType === "text" ? ["", "", "", ""] : current.choiceImages,
       choices:
@@ -259,7 +258,7 @@ export default function AdminQuizPage() {
         },
         body: JSON.stringify({
           id: form.id,
-          prompt: form.promptType === "image" ? "문제 사진" : form.prompt,
+          prompt: form.prompt,
           promptType: form.promptType,
           promptImage: form.promptImage,
           choices: payloadChoices,
@@ -381,17 +380,7 @@ export default function AdminQuizPage() {
                 </div>
               </fieldset>
 
-              {form.promptType === "text" ? (
-                <label className="admin-field-block">
-                  <span className="admin-field-label">문제 문장</span>
-                  <textarea
-                    value={form.prompt}
-                    onChange={(event) => setForm({ ...form, prompt: event.target.value })}
-                    placeholder="예: 우리교회 목사님 성함은?"
-                    required
-                  />
-                </label>
-              ) : (
+              {form.promptType === "image" && (
                 <div className="prompt-image-editor admin-field-block">
                   <label>
                     <span className="admin-field-label">문제 사진</span>
@@ -411,6 +400,16 @@ export default function AdminQuizPage() {
                   )}
                 </div>
               )}
+
+              <label className="admin-field-block">
+                <span className="admin-field-label">문제 문장</span>
+                <textarea
+                  value={form.prompt}
+                  onChange={(event) => setForm({ ...form, prompt: event.target.value })}
+                  placeholder="예: 우리교회 목사님 성함은?"
+                  required
+                />
+              </label>
 
               <fieldset className="choices-fieldset">
                 <legend className="choices-fieldset-legend">
@@ -520,12 +519,11 @@ export default function AdminQuizPage() {
                         {quiz.promptType === "image" && quiz.promptImage ? (
                           <img
                             src={quiz.promptImage}
-                            alt="문제 사진"
+                            alt={quiz.prompt || "문제 사진"}
                             className="admin-prompt-preview admin-prompt-preview-list"
                           />
-                        ) : (
-                          <p>{quiz.prompt}</p>
-                        )}
+                        ) : null}
+                        {quiz.prompt && quiz.prompt !== "문제 사진" ? <p>{quiz.prompt}</p> : null}
                         <small>
                           정답:{" "}
                           {getAnswerIndexes(quiz)

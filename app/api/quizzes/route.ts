@@ -63,7 +63,7 @@ function readPayload(body: unknown): QuizPayload | null {
     return null;
   }
 
-  if (promptType === "text" && prompt.length < 2) {
+  if (prompt.length < 2) {
     return null;
   }
 
@@ -81,7 +81,7 @@ function readPayload(body: unknown): QuizPayload | null {
     }
   }
 
-  const normalizedPrompt = promptType === "image" ? prompt || "문제 사진" : prompt;
+  const normalizedPrompt = prompt;
   const normalizedChoices = choices.map((choice, index) =>
     choiceType === "image" ? choice || `선택지 ${index + 1}` : choice
   );

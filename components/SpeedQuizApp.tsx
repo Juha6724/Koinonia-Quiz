@@ -429,9 +429,10 @@ export default function SpeedQuizApp() {
                     className="question-photo"
                     draggable={false}
                   />
-                ) : (
+                ) : null}
+                {question.prompt && question.prompt !== "문제 사진" ? (
                   <h2 className="question-title">{question.prompt}</h2>
-                )}
+                ) : null}
               </article>
 
               <div
