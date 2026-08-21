@@ -109,8 +109,32 @@ export const quizQuestions: QuizQuestion[] = [
   }
 ];
 
-export function splitQuizPool(questions: QuizQuestion[] = quizQuestions) {
-  const source = questions.length > 0 ? questions : quizQuestions;
+export function isTemplateQuiz(question: QuizQuestion) {
+  const templateIds = new Set(quizQuestions.map((template) => template.id));
+
+  if (templateIds.has(question.id)) {
+    return true;
+  }
+
+  return quizQuestions.some(
+    (template) =>
+      template.prompt === question.prompt &&
+      template.choiceType === question.choiceType &&
+      template.choices.length === question.choices.length &&
+      template.choices.every((choice, index) => choice === question.choices[index])
+  );
+}
+
+export function splitQuizPool(questions: QuizQuestion[] = []) {
+  const source = questions.filter((question) => !isTemplateQuiz(question));
+
+  if (source.length === 0) {
+    return {
+      practiceQuestion: null as QuizQuestion | null,
+      realQuestions: [] as QuizQuestion[]
+    };
+  }
+
   const indexed = source.map((question, index) => ({ question, index }));
 
   indexed.sort((left, right) => {
@@ -124,18 +148,14 @@ export function splitQuizPool(questions: QuizQuestion[] = quizQuestions) {
     return left.index - right.index;
   });
 
-  const practiceQuestion =
-    indexed.find((item) => item.question.prompt.includes("담임목사"))?.question ??
-    indexed[0].question;
+  const practiceQuestion = indexed[0].question;
   const realQuestions = source.filter((question) => question.id !== practiceQuestion.id);
 
   return {
     practiceQuestion,
-    realQuestions: realQuestions.length > 0 ? realQuestions : source
+    realQuestions
   };
 }
-
-export const practiceQuestion = splitQuizPool(quizQuestions).practiceQuestion;
 
 export function shuffleIds(ids: string[]) {
   const shuffled = [...ids];
@@ -149,11 +169,17 @@ export function shuffleIds(ids: string[]) {
 }
 
 export function drawNextQuizQuestion(
-  questions: QuizQuestion[] = quizQuestions,
+  questions: QuizQuestion[],
   remainingIds: string[] = []
 ) {
-  const source = questions.length > 0 ? questions : quizQuestions;
-  const availableIds = source.map((question) => question.id);
+  if (questions.length === 0) {
+    return {
+      question: null as QuizQuestion | null,
+      remainingIds: [] as string[]
+    };
+  }
+
+  const availableIds = questions.map((question) => question.id);
   let remaining = remainingIds.filter((id) => availableIds.includes(id));
 
   if (remaining.length === 0) {
@@ -161,7 +187,7 @@ export function drawNextQuizQuestion(
   }
 
   const nextId = remaining[0];
-  const question = source.find((item) => item.id === nextId) ?? source[0];
+  const question = questions.find((item) => item.id === nextId) ?? questions[0];
 
   return {
     question,

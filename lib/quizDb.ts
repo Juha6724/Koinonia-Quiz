@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { quizQuestions, QuizRow } from "@/lib/quiz";
+import { QuizRow } from "@/lib/quiz";
 
 export const QUIZ_SELECT =
   "id, prompt, prompt_type, prompt_image, visual, choice_1, choice_2, choice_3, choice_4, choice_type, choice_image_1, choice_image_2, choice_image_3, choice_image_4, answer_index, is_active, created_at, updated_at";
@@ -50,25 +50,6 @@ export function toQuizRowInsert(payload: QuizInsertPayload, includePromptColumns
   }
 
   return row;
-}
-
-export function toQuizRowInsertFromDefault(
-  question: (typeof quizQuestions)[number],
-  includePromptColumns: boolean
-) {
-  return toQuizRowInsert(
-    {
-      prompt: question.prompt,
-      promptType: question.promptType ?? "text",
-      promptImage: question.promptImage ?? "",
-      choices: question.choices,
-      choiceType: question.choiceType,
-      choiceImages: question.choiceImages ?? ["", "", "", ""],
-      answerIndex: question.answerIndex,
-      isActive: true
-    },
-    includePromptColumns
-  );
 }
 
 export async function fetchQuizRows(

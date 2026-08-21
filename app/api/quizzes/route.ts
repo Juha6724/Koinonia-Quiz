@@ -2,14 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   fetchQuizRows,
-  isMissingPromptTypeColumnError,
   MIGRATION_HINT,
   QUIZ_SELECT,
   QUIZ_SELECT_LEGACY,
-  toQuizRowInsert,
-  toQuizRowInsertFromDefault
+  toQuizRowInsert
 } from "@/lib/quizDb";
-import { quizQuestions, QuizChoiceType, QuizPromptType, QuizRow, toQuizQuestion } from "@/lib/quiz";
+import { isTemplateQuiz, QuizChoiceType, QuizPromptType, QuizRow, toQuizQuestion } from "@/lib/quiz";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -134,7 +132,7 @@ export async function GET(request: NextRequest) {
   if (!supabase) {
     return NextResponse.json({
       configured: false,
-      quizzes: quizQuestions
+      quizzes: []
     });
   }
 
@@ -145,55 +143,19 @@ export async function GET(request: NextRequest) {
     return jsonError("관리자 PIN이 올바르지 않습니다.", 401);
   }
 
-  let { rows, usesLegacySchema, error } = await fetchQuizRows(supabase, isAdmin);
+  const { rows, usesLegacySchema, error } = await fetchQuizRows(supabase, isAdmin);
 
   if (error) {
     return jsonError(error, 500);
   }
 
-  if (isAdmin && rows.length === 0) {
-    const insertPayload = quizQuestions.map((question) =>
-      toQuizRowInsertFromDefault(question, !usesLegacySchema)
-    ) as never[];
-    const seeded = usesLegacySchema
-      ? await supabase
-          .from("quizzes")
-          .insert(insertPayload)
-          .select(QUIZ_SELECT_LEGACY)
-          .order("created_at", { ascending: false })
-      : await supabase
-          .from("quizzes")
-          .insert(insertPayload)
-          .select(QUIZ_SELECT)
-          .order("created_at", { ascending: false });
-
-    if (seeded.error) {
-      if (!usesLegacySchema && isMissingPromptTypeColumnError(seeded.error.message)) {
-        const legacySeeded = await supabase
-          .from("quizzes")
-          .insert(quizQuestions.map((question) => toQuizRowInsertFromDefault(question, false)) as never[])
-          .select(QUIZ_SELECT_LEGACY)
-          .order("created_at", { ascending: false });
-
-        if (legacySeeded.error) {
-          return jsonError(legacySeeded.error.message, 500);
-        }
-
-        rows = (legacySeeded.data ?? []) as QuizRow[];
-        usesLegacySchema = true;
-      } else {
-        return jsonError(seeded.error.message, 500);
-      }
-    } else {
-      rows = (seeded.data ?? []) as QuizRow[];
-    }
-  }
+  const quizzes = (rows as QuizRow[]).map(toQuizQuestion);
 
   return NextResponse.json({
     configured: true,
     schemaNeedsMigration: usesLegacySchema,
     migrationHint: usesLegacySchema ? MIGRATION_HINT : null,
-    quizzes: rows.map(toQuizQuestion)
+    quizzes: isAdmin ? quizzes : quizzes.filter((quiz) => !isTemplateQuiz(quiz))
   });
 }
 

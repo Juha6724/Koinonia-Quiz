@@ -6,9 +6,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { formatElapsed, getKstDayKey } from "@/lib/day";
 import {
   drawNextQuizQuestion,
-  practiceQuestion as defaultPracticeQuestion,
   QuizQuestion,
-  quizQuestions,
   splitQuizPool
 } from "@/lib/quiz";
 import { Ranking, sortRankings } from "@/lib/rankings";
@@ -72,16 +70,14 @@ function createLocalRanking(playerName: string, elapsedMs: number, quizId: strin
 export default function SpeedQuizApp() {
   const [phase, setPhase] = useState<Phase>("intro");
   const [playerName, setPlayerName] = useState("");
-  const [question, setQuestion] = useState<QuizQuestion>(defaultPracticeQuestion);
-  const [practiceQuestion, setPracticeQuestion] = useState<QuizQuestion>(defaultPracticeQuestion);
+  const [question, setQuestion] = useState<QuizQuestion | null>(null);
+  const [practiceQuestion, setPracticeQuestion] = useState<QuizQuestion | null>(null);
   const [isPracticeRound, setIsPracticeRound] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [startedAt, setStartedAt] = useState(0);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const [rankings, setRankings] = useState<Ranking[]>([]);
-  const [quizPool, setQuizPool] = useState<QuizQuestion[]>(
-    splitQuizPool(quizQuestions).realQuestions
-  );
+  const [quizPool, setQuizPool] = useState<QuizQuestion[]>([]);
   const [storageMode, setStorageMode] = useState<StorageMode>("checking");
   const [resultState, setResultState] = useState<ResultState>("idle");
   const [lastRankingId, setLastRankingId] = useState<string | null>(null);
@@ -122,25 +118,22 @@ export default function SpeedQuizApp() {
   }, []);
 
   const loadQuizQuestions = useCallback(async () => {
-    function applyQuizPool(questions: QuizQuestion[]) {
-      const split = splitQuizPool(questions);
-      setPracticeQuestion(split.practiceQuestion);
-      setQuizPool(split.realQuestions);
-    }
-
     try {
       const response = await fetch("/api/quizzes", { cache: "no-store" });
       const data = await response.json();
 
-      if (response.ok && Array.isArray(data.quizzes) && data.quizzes.length > 0) {
-        applyQuizPool(data.quizzes as QuizQuestion[]);
+      if (response.ok && Array.isArray(data.quizzes)) {
+        const split = splitQuizPool(data.quizzes as QuizQuestion[]);
+        setPracticeQuestion(split.practiceQuestion);
+        setQuizPool(split.realQuestions);
         return;
       }
     } catch {
-      // Keep the built-in quiz set when Supabase quizzes are unavailable.
+      // Keep an empty pool when admin quizzes cannot be loaded.
     }
 
-    applyQuizPool(quizQuestions);
+    setPracticeQuestion(null);
+    setQuizPool([]);
   }, []);
 
   useEffect(() => {
@@ -202,9 +195,18 @@ export default function SpeedQuizApp() {
 
   function startRound(practice: boolean) {
     if (practice) {
+      if (!practiceQuestion) {
+        return;
+      }
+
       setQuestion(practiceQuestion);
     } else {
       const drawn = drawNextQuizQuestion(quizPool, readRemainingQuizIds());
+
+      if (!drawn.question) {
+        return;
+      }
+
       writeRemainingQuizIds(drawn.remainingIds);
       setQuestion(drawn.question);
     }
@@ -257,7 +259,7 @@ export default function SpeedQuizApp() {
   }
 
   async function handleChoice(choiceIndex: number) {
-    if (hasAnsweredRef.current) {
+    if (hasAnsweredRef.current || !question) {
       return;
     }
 
@@ -379,7 +381,7 @@ export default function SpeedQuizApp() {
                     autoFocus
                   />
                 </div>
-                <button type="submit" className="btn-primary btn-primary-xl" disabled={!cleanName}>
+                <button type="submit" className="btn-primary btn-primary-xl" disabled={!cleanName || !practiceQuestion}>
                   다음으로
                 </button>
               </form>
@@ -412,7 +414,7 @@ export default function SpeedQuizApp() {
             </section>
           )}
 
-          {phase === "quiz" && (
+          {phase === "quiz" && question && (
             <section className="quiz-screen">
               <article
                 className={`question-card ${
@@ -547,6 +549,7 @@ export default function SpeedQuizApp() {
             <button
               type="button"
               className="btn-primary btn-primary-xl"
+              disabled={phase === "ready" ? !practiceQuestion : quizPool.length === 0}
               onClick={() => startRound(phase === "ready")}
             >
               {phase === "ready" ? "시작하기" : "실전 시작"}
