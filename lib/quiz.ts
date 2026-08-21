@@ -13,6 +13,7 @@ export type QuizQuestion = {
   choiceType: QuizChoiceType;
   answerIndex: number;
   isActive?: boolean;
+  createdAt?: string;
 };
 
 export type QuizRow = {
@@ -73,15 +74,6 @@ export function formatToTypes(format: QuizFormat): {
   }
 }
 
-export const practiceQuestion: QuizQuestion = {
-  id: "practice-light",
-  prompt: "연습 문제: '빛'을 골라 보세요.",
-  promptType: "text",
-  choices: ["빛", "소금", "물", "구름"],
-  choiceType: "text",
-  answerIndex: 0
-};
-
 export const quizQuestions: QuizQuestion[] = [
   {
     id: "church-pastor-name",
@@ -117,10 +109,64 @@ export const quizQuestions: QuizQuestion[] = [
   }
 ];
 
-export function getRandomQuizQuestion(questions = quizQuestions) {
+export function splitQuizPool(questions: QuizQuestion[] = quizQuestions) {
   const source = questions.length > 0 ? questions : quizQuestions;
-  const randomIndex = Math.floor(Math.random() * source.length);
-  return source[randomIndex];
+  const indexed = source.map((question, index) => ({ question, index }));
+
+  indexed.sort((left, right) => {
+    const leftTime = left.question.createdAt ?? "";
+    const rightTime = right.question.createdAt ?? "";
+
+    if (leftTime && rightTime && leftTime !== rightTime) {
+      return leftTime.localeCompare(rightTime);
+    }
+
+    return left.index - right.index;
+  });
+
+  const practiceQuestion =
+    indexed.find((item) => item.question.prompt.includes("담임목사"))?.question ??
+    indexed[0].question;
+  const realQuestions = source.filter((question) => question.id !== practiceQuestion.id);
+
+  return {
+    practiceQuestion,
+    realQuestions: realQuestions.length > 0 ? realQuestions : source
+  };
+}
+
+export const practiceQuestion = splitQuizPool(quizQuestions).practiceQuestion;
+
+export function shuffleIds(ids: string[]) {
+  const shuffled = [...ids];
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+
+  return shuffled;
+}
+
+export function drawNextQuizQuestion(
+  questions: QuizQuestion[] = quizQuestions,
+  remainingIds: string[] = []
+) {
+  const source = questions.length > 0 ? questions : quizQuestions;
+  const availableIds = source.map((question) => question.id);
+  let remaining = remainingIds.filter((id) => availableIds.includes(id));
+
+  if (remaining.length === 0) {
+    remaining = shuffleIds(availableIds);
+  }
+
+  const nextId = remaining[0];
+  const question = source.find((item) => item.id === nextId) ?? source[0];
+
+  return {
+    question,
+    remainingIds: remaining.slice(1)
+  };
 }
 
 export function toQuizQuestion(row: QuizRow): QuizQuestion {
@@ -139,6 +185,7 @@ export function toQuizQuestion(row: QuizRow): QuizQuestion {
     ],
     choiceType: row.choice_type === "image" ? "image" : "text",
     answerIndex: row.answer_index,
-    isActive: row.is_active
+    isActive: row.is_active,
+    createdAt: row.created_at
   };
 }

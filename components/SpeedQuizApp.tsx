@@ -5,10 +5,11 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 
 import { formatElapsed, getKstDayKey } from "@/lib/day";
 import {
-  getRandomQuizQuestion,
-  practiceQuestion,
+  drawNextQuizQuestion,
+  practiceQuestion as defaultPracticeQuestion,
   QuizQuestion,
-  quizQuestions
+  quizQuestions,
+  splitQuizPool
 } from "@/lib/quiz";
 import { Ranking, sortRankings } from "@/lib/rankings";
 
@@ -17,9 +18,28 @@ type ResultState = "idle" | "correct" | "wrong" | "practice";
 type StorageMode = "checking" | "supabase" | "local";
 
 const AUTO_RETURN_SECONDS = 10;
+const QUIZ_QUEUE_STORAGE_KEY = "koinonia-quiz-remaining-ids";
 
 function rankingsStorageKey() {
   return `koinonia-quiz-rankings-${getKstDayKey()}`;
+}
+
+function readRemainingQuizIds() {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const stored = window.localStorage.getItem(QUIZ_QUEUE_STORAGE_KEY);
+    const parsed = stored ? (JSON.parse(stored) as unknown) : [];
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRemainingQuizIds(ids: string[]) {
+  window.localStorage.setItem(QUIZ_QUEUE_STORAGE_KEY, JSON.stringify(ids));
 }
 
 function readLocalRankings() {
@@ -52,13 +72,16 @@ function createLocalRanking(playerName: string, elapsedMs: number, quizId: strin
 export default function SpeedQuizApp() {
   const [phase, setPhase] = useState<Phase>("intro");
   const [playerName, setPlayerName] = useState("");
-  const [question, setQuestion] = useState<QuizQuestion>(practiceQuestion);
+  const [question, setQuestion] = useState<QuizQuestion>(defaultPracticeQuestion);
+  const [practiceQuestion, setPracticeQuestion] = useState<QuizQuestion>(defaultPracticeQuestion);
   const [isPracticeRound, setIsPracticeRound] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [startedAt, setStartedAt] = useState(0);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const [rankings, setRankings] = useState<Ranking[]>([]);
-  const [quizPool, setQuizPool] = useState<QuizQuestion[]>(quizQuestions);
+  const [quizPool, setQuizPool] = useState<QuizQuestion[]>(
+    splitQuizPool(quizQuestions).realQuestions
+  );
   const [storageMode, setStorageMode] = useState<StorageMode>("checking");
   const [resultState, setResultState] = useState<ResultState>("idle");
   const [lastRankingId, setLastRankingId] = useState<string | null>(null);
@@ -99,19 +122,25 @@ export default function SpeedQuizApp() {
   }, []);
 
   const loadQuizQuestions = useCallback(async () => {
+    function applyQuizPool(questions: QuizQuestion[]) {
+      const split = splitQuizPool(questions);
+      setPracticeQuestion(split.practiceQuestion);
+      setQuizPool(split.realQuestions);
+    }
+
     try {
       const response = await fetch("/api/quizzes", { cache: "no-store" });
       const data = await response.json();
 
       if (response.ok && Array.isArray(data.quizzes) && data.quizzes.length > 0) {
-        setQuizPool(data.quizzes as QuizQuestion[]);
+        applyQuizPool(data.quizzes as QuizQuestion[]);
         return;
       }
     } catch {
       // Keep the built-in quiz set when Supabase quizzes are unavailable.
     }
 
-    setQuizPool(quizQuestions);
+    applyQuizPool(quizQuestions);
   }, []);
 
   useEffect(() => {
@@ -172,7 +201,14 @@ export default function SpeedQuizApp() {
   }
 
   function startRound(practice: boolean) {
-    setQuestion(practice ? practiceQuestion : getRandomQuizQuestion(quizPool));
+    if (practice) {
+      setQuestion(practiceQuestion);
+    } else {
+      const drawn = drawNextQuizQuestion(quizPool, readRemainingQuizIds());
+      writeRemainingQuizIds(drawn.remainingIds);
+      setQuestion(drawn.question);
+    }
+
     setIsPracticeRound(practice);
     setSelectedIndex(null);
     setElapsedMs(null);
