@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { QuizRow } from "@/lib/quiz";
+import { QuizRow, storedAnswerVisual } from "@/lib/quiz";
 
 export const QUIZ_SELECT =
   "id, prompt, prompt_type, prompt_image, visual, choice_1, choice_2, choice_3, choice_4, choice_type, choice_image_1, choice_image_2, choice_image_3, choice_image_4, answer_index, is_active, created_at, updated_at";
@@ -19,6 +19,7 @@ type QuizInsertPayload = {
   choiceType: "text" | "image";
   choiceImages: string[];
   answerIndex: number;
+  answerIndexes: number[];
   isActive: boolean;
 };
 
@@ -30,7 +31,7 @@ export function isMissingPromptTypeColumnError(message: string) {
 export function toQuizRowInsert(payload: QuizInsertPayload, includePromptColumns: boolean) {
   const row: Record<string, unknown> = {
     prompt: payload.prompt,
-    visual: null,
+    visual: storedAnswerVisual(payload.answerIndexes),
     choice_1: payload.choices[0],
     choice_2: payload.choices[1],
     choice_3: payload.choices[2],
@@ -40,7 +41,7 @@ export function toQuizRowInsert(payload: QuizInsertPayload, includePromptColumns
     choice_image_2: payload.choiceImages[1] || null,
     choice_image_3: payload.choiceImages[2] || null,
     choice_image_4: payload.choiceImages[3] || null,
-    answer_index: payload.answerIndex,
+    answer_index: payload.answerIndexes[0] ?? payload.answerIndex,
     is_active: payload.isActive
   };
 

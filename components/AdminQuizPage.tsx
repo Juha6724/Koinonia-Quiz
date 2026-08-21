@@ -6,6 +6,7 @@ import { FormEvent, useState } from "react";
 
 import {
   formatToTypes,
+  getAnswerIndexes,
   getQuizFormat,
   getQuizFormatLabel,
   QuizChoiceType,
@@ -22,7 +23,7 @@ type QuizFormState = {
   choices: string[];
   choiceType: QuizChoiceType;
   choiceImages: string[];
-  answerIndex: number;
+  answerIndexes: number[];
   isActive: boolean;
 };
 
@@ -34,7 +35,7 @@ const emptyForm: QuizFormState = {
   choices: ["", "", "", ""],
   choiceType: "text",
   choiceImages: ["", "", "", ""],
-  answerIndex: 0,
+  answerIndexes: [0],
   isActive: true
 };
 
@@ -226,7 +227,7 @@ export default function AdminQuizPage() {
       ),
       choiceType: quiz.choiceType,
       choiceImages: quiz.choiceImages ?? ["", "", "", ""],
-      answerIndex: quiz.answerIndex,
+      answerIndexes: getAnswerIndexes(quiz),
       isActive: quiz.isActive ?? true
     });
     setMessage("선택한 퀴즈를 수정 중입니다.");
@@ -264,7 +265,8 @@ export default function AdminQuizPage() {
           choices: payloadChoices,
           choiceType: form.choiceType,
           choiceImages: form.choiceImages,
-          answerIndex: form.answerIndex,
+          answerIndex: form.answerIndexes[0] ?? 0,
+          answerIndexes: form.answerIndexes,
           isActive: form.isActive,
           pin: adminPin
         })
@@ -452,8 +454,28 @@ export default function AdminQuizPage() {
                       )}
                       <button
                         type="button"
-                        className={form.answerIndex === index ? "answer-selected" : ""}
-                        onClick={() => setForm({ ...form, answerIndex: index })}
+                        className={form.answerIndexes.includes(index) ? "answer-selected" : ""}
+                        onClick={() =>
+                          setForm((current) => {
+                            const selected = current.answerIndexes.includes(index);
+
+                            if (selected) {
+                              const nextIndexes = current.answerIndexes.filter(
+                                (answerIndex) => answerIndex !== index
+                              );
+                              return nextIndexes.length === 0
+                                ? current
+                                : { ...current, answerIndexes: nextIndexes };
+                            }
+
+                            return {
+                              ...current,
+                              answerIndexes: [...current.answerIndexes, index].sort(
+                                (left, right) => left - right
+                              )
+                            };
+                          })
+                        }
                       >
                         정답
                       </button>
@@ -506,9 +528,13 @@ export default function AdminQuizPage() {
                         )}
                         <small>
                           정답:{" "}
-                          {quiz.choiceType === "image"
-                            ? `선택지 ${quiz.answerIndex + 1}`
-                            : quiz.choices[quiz.answerIndex]}
+                          {getAnswerIndexes(quiz)
+                            .map((answerIndex) =>
+                              quiz.choiceType === "image"
+                                ? `선택지 ${answerIndex + 1}`
+                                : quiz.choices[answerIndex]
+                            )
+                            .join(", ")}
                           {quiz.choiceType === "text" ? ` / ${quiz.choices.join(", ")}` : ""}
                         </small>
                         {quiz.choiceType === "image" && (

@@ -6,6 +6,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 import { formatElapsed, getKstDayKey } from "@/lib/day";
 import {
   drawNextQuizQuestion,
+  isCorrectChoice,
   QuizQuestion,
   splitQuizPool
 } from "@/lib/quiz";
@@ -265,7 +266,7 @@ export default function SpeedQuizApp() {
 
     hasAnsweredRef.current = true;
     const answerElapsedMs = performance.now() - startedAt;
-    const isCorrect = choiceIndex === question.answerIndex;
+    const isCorrect = isCorrectChoice(question, choiceIndex);
 
     setSelectedIndex(choiceIndex);
     setElapsedMs(answerElapsedMs);
@@ -440,7 +441,7 @@ export default function SpeedQuizApp() {
               >
                 {question.choices.map((choice, index) => {
                   const isSelected = selectedIndex === index;
-                  const isAnswer = question.answerIndex === index;
+                  const isAnswer = isCorrectChoice(question, index);
                   const revealClass =
                     selectedIndex === null
                       ? ""

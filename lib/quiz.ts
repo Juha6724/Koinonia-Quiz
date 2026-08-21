@@ -12,6 +12,7 @@ export type QuizQuestion = {
   choiceImages?: string[];
   choiceType: QuizChoiceType;
   answerIndex: number;
+  answerIndexes?: number[];
   isActive?: boolean;
   createdAt?: string;
 };
@@ -36,6 +37,51 @@ export type QuizRow = {
   created_at: string;
   updated_at: string;
 };
+
+export function normalizeAnswerIndexes(value: unknown, fallback = 0) {
+  const source = Array.isArray(value) ? value : [value];
+  const indexes = [
+    ...new Set(
+      source
+        .map((item) => Number(item))
+        .filter((index) => Number.isInteger(index) && index >= 0 && index <= 3)
+    )
+  ].sort((left, right) => left - right);
+
+  return indexes.length > 0 ? indexes : [fallback];
+}
+
+export function getAnswerIndexes(
+  question: Pick<QuizQuestion, "answerIndex" | "answerIndexes">
+) {
+  return normalizeAnswerIndexes(question.answerIndexes, question.answerIndex);
+}
+
+export function isCorrectChoice(
+  question: Pick<QuizQuestion, "answerIndex" | "answerIndexes">,
+  choiceIndex: number
+) {
+  return getAnswerIndexes(question).includes(choiceIndex);
+}
+
+export function parseStoredAnswerIndexes(visual: string | null | undefined, answerIndex: number) {
+  if (visual && visual.startsWith("A:")) {
+    return normalizeAnswerIndexes(
+      visual
+        .slice(2)
+        .split(",")
+        .map((item) => Number(item.trim())),
+      answerIndex
+    );
+  }
+
+  return normalizeAnswerIndexes(answerIndex);
+}
+
+export function storedAnswerVisual(answerIndexes: number[]) {
+  const indexes = normalizeAnswerIndexes(answerIndexes);
+  return indexes.length > 1 ? `A:${indexes.join(",")}` : null;
+}
 
 export function getQuizFormat(question: Pick<QuizQuestion, "promptType" | "choiceType">): QuizFormat {
   if (question.promptType === "image" && question.choiceType === "text") {
@@ -196,6 +242,8 @@ export function drawNextQuizQuestion(
 }
 
 export function toQuizQuestion(row: QuizRow): QuizQuestion {
+  const answerIndexes = parseStoredAnswerIndexes(row.visual, row.answer_index);
+
   return {
     id: row.id,
     prompt: row.prompt,
@@ -210,7 +258,8 @@ export function toQuizQuestion(row: QuizRow): QuizQuestion {
       row.choice_image_4 ?? ""
     ],
     choiceType: row.choice_type === "image" ? "image" : "text",
-    answerIndex: row.answer_index,
+    answerIndex: answerIndexes[0],
+    answerIndexes,
     isActive: row.is_active,
     createdAt: row.created_at
   };

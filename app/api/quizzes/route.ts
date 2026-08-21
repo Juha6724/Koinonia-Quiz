@@ -7,7 +7,7 @@ import {
   QUIZ_SELECT_LEGACY,
   toQuizRowInsert
 } from "@/lib/quizDb";
-import { isTemplateQuiz, QuizChoiceType, QuizPromptType, QuizRow, toQuizQuestion } from "@/lib/quiz";
+import { isTemplateQuiz, normalizeAnswerIndexes, QuizChoiceType, QuizPromptType, QuizRow, toQuizQuestion } from "@/lib/quiz";
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +20,7 @@ type QuizPayload = {
   choiceType: QuizChoiceType;
   choiceImages: string[];
   answerIndex: number;
+  answerIndexes: number[];
   isActive: boolean;
 };
 
@@ -52,7 +53,10 @@ function readPayload(body: unknown): QuizPayload | null {
   const choiceImages = Array.isArray(source.choiceImages)
     ? source.choiceImages.map((image) => String(image ?? "").trim())
     : [];
-  const answerIndex = Number(source.answerIndex);
+  const answerIndexes = normalizeAnswerIndexes(
+    Array.isArray(source.answerIndexes) ? source.answerIndexes : source.answerIndex,
+    0
+  );
   const isActive = typeof source.isActive === "boolean" ? source.isActive : true;
 
   if (choices.length !== 4) {
@@ -87,7 +91,7 @@ function readPayload(body: unknown): QuizPayload | null {
     return null;
   }
 
-  if (!Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex > 3) {
+  if (answerIndexes.length === 0) {
     return null;
   }
 
@@ -98,7 +102,8 @@ function readPayload(body: unknown): QuizPayload | null {
     choices: normalizedChoices,
     choiceType,
     choiceImages: normalizedImages,
-    answerIndex,
+    answerIndex: answerIndexes[0],
+    answerIndexes,
     isActive
   };
 }
