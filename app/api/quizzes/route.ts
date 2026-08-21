@@ -152,12 +152,20 @@ export async function GET(request: NextRequest) {
   }
 
   if (isAdmin && rows.length === 0) {
-    const select = usesLegacySchema ? QUIZ_SELECT_LEGACY : QUIZ_SELECT;
-    const seeded = await supabase
-      .from("quizzes")
-      .insert(quizQuestions.map((question) => toQuizRowInsertFromDefault(question, !usesLegacySchema)))
-      .select(select)
-      .order("created_at", { ascending: false });
+    const insertPayload = quizQuestions.map((question) =>
+      toQuizRowInsertFromDefault(question, !usesLegacySchema)
+    );
+    const seeded = usesLegacySchema
+      ? await supabase
+          .from("quizzes")
+          .insert(insertPayload)
+          .select(QUIZ_SELECT_LEGACY)
+          .order("created_at", { ascending: false })
+      : await supabase
+          .from("quizzes")
+          .insert(insertPayload)
+          .select(QUIZ_SELECT)
+          .order("created_at", { ascending: false });
 
     if (seeded.error) {
       if (!usesLegacySchema && isMissingPromptTypeColumnError(seeded.error.message)) {

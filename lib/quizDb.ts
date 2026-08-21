@@ -28,7 +28,7 @@ export function isMissingPromptTypeColumnError(message: string) {
 }
 
 export function toQuizRowInsert(payload: QuizInsertPayload, includePromptColumns: boolean) {
-  const row = {
+  const row: Record<string, unknown> = {
     prompt: payload.prompt,
     visual: null,
     choice_1: payload.choices[0],
@@ -44,15 +44,12 @@ export function toQuizRowInsert(payload: QuizInsertPayload, includePromptColumns
     is_active: payload.isActive
   };
 
-  if (!includePromptColumns) {
-    return row;
+  if (includePromptColumns) {
+    row.prompt_type = payload.promptType;
+    row.prompt_image = payload.promptType === "image" ? payload.promptImage : null;
   }
 
-  return {
-    ...row,
-    prompt_type: payload.promptType,
-    prompt_image: payload.promptType === "image" ? payload.promptImage : null
-  };
+  return row;
 }
 
 export function toQuizRowInsertFromDefault(
@@ -94,11 +91,14 @@ export async function fetchQuizRows(
     return query;
   };
 
+  const toRows = (data: unknown): QuizRow[] =>
+    Array.isArray(data) ? (data as QuizRow[]) : [];
+
   const modern = await runQuery(QUIZ_SELECT);
 
   if (!modern.error) {
     return {
-      rows: (modern.data ?? []) as QuizRow[],
+      rows: toRows(modern.data),
       usesLegacySchema: false,
       error: null
     };
@@ -123,7 +123,7 @@ export async function fetchQuizRows(
   }
 
   return {
-    rows: (legacy.data ?? []) as QuizRow[],
+    rows: toRows(legacy.data),
     usesLegacySchema: true,
     error: null
   };
