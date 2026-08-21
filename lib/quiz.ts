@@ -214,31 +214,14 @@ export function shuffleIds(ids: string[]) {
   return shuffled;
 }
 
-export function drawNextQuizQuestion(
-  questions: QuizQuestion[],
-  remainingIds: string[] = []
-) {
-  if (questions.length === 0) {
-    return {
-      question: null as QuizQuestion | null,
-      remainingIds: [] as string[]
-    };
+export function createShuffledQueue(questions: QuizQuestion[], lastId?: string | null) {
+  let ids = shuffleIds(questions.map((question) => question.id));
+
+  if (ids.length > 1 && lastId && ids[0] === lastId) {
+    ids = [...ids.slice(1), ids[0]];
   }
 
-  const availableIds = questions.map((question) => question.id);
-  let remaining = remainingIds.filter((id) => availableIds.includes(id));
-
-  if (remaining.length === 0) {
-    remaining = shuffleIds(availableIds);
-  }
-
-  const nextId = remaining[0];
-  const question = questions.find((item) => item.id === nextId) ?? questions[0];
-
-  return {
-    question,
-    remainingIds: remaining.slice(1)
-  };
+  return ids;
 }
 
 export function toQuizQuestion(row: QuizRow): QuizQuestion {

@@ -5,7 +5,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "re
 
 import { formatElapsed, getKstDayKey } from "@/lib/day";
 import {
-  drawNextQuizQuestion,
+  createShuffledQueue,
   isCorrectChoice,
   QuizQuestion,
   splitQuizPool
@@ -17,28 +17,9 @@ type ResultState = "idle" | "correct" | "wrong" | "practice";
 type StorageMode = "checking" | "supabase" | "local";
 
 const AUTO_RETURN_SECONDS = 10;
-const QUIZ_QUEUE_STORAGE_KEY = "koinonia-quiz-remaining-ids";
 
 function rankingsStorageKey() {
   return `koinonia-quiz-rankings-${getKstDayKey()}`;
-}
-
-function readRemainingQuizIds() {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const stored = window.localStorage.getItem(QUIZ_QUEUE_STORAGE_KEY);
-    const parsed = stored ? (JSON.parse(stored) as unknown) : [];
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeRemainingQuizIds(ids: string[]) {
-  window.localStorage.setItem(QUIZ_QUEUE_STORAGE_KEY, JSON.stringify(ids));
 }
 
 function readLocalRankings() {
@@ -79,6 +60,8 @@ export default function SpeedQuizApp() {
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [quizPool, setQuizPool] = useState<QuizQuestion[]>([]);
+  const [quizQueue, setQuizQueue] = useState<string[]>([]);
+  const lastRealQuizIdRef = useRef<string | null>(null);
   const [storageMode, setStorageMode] = useState<StorageMode>("checking");
   const [resultState, setResultState] = useState<ResultState>("idle");
   const [lastRankingId, setLastRankingId] = useState<string | null>(null);
@@ -127,6 +110,8 @@ export default function SpeedQuizApp() {
         const split = splitQuizPool(data.quizzes as QuizQuestion[]);
         setPracticeQuestion(split.practiceQuestion);
         setQuizPool(split.realQuestions);
+        setQuizQueue(createShuffledQueue(split.realQuestions));
+        lastRealQuizIdRef.current = null;
         return;
       }
     } catch {
@@ -135,6 +120,8 @@ export default function SpeedQuizApp() {
 
     setPracticeQuestion(null);
     setQuizPool([]);
+    setQuizQueue([]);
+    lastRealQuizIdRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -202,14 +189,18 @@ export default function SpeedQuizApp() {
 
       setQuestion(practiceQuestion);
     } else {
-      const drawn = drawNextQuizQuestion(quizPool, readRemainingQuizIds());
+      const queue =
+        quizQueue.length > 0 ? quizQueue : createShuffledQueue(quizPool, lastRealQuizIdRef.current);
+      const nextId = queue[0];
+      const nextQuestion = quizPool.find((item) => item.id === nextId) ?? quizPool[0];
 
-      if (!drawn.question) {
+      if (!nextQuestion) {
         return;
       }
 
-      writeRemainingQuizIds(drawn.remainingIds);
-      setQuestion(drawn.question);
+      lastRealQuizIdRef.current = nextQuestion.id;
+      setQuizQueue(queue.slice(1));
+      setQuestion(nextQuestion);
     }
 
     setIsPracticeRound(practice);
